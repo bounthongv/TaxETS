@@ -1,0 +1,233 @@
+
+Phase 2, Step 1: Database Connection
+
+First, your PHP application needs to know how to talk to your database.
+
+Create a Configuration File:
+Create a new file to store your database credentials. This keeps them separate from your application logic.
+File: src/config.php
+
+Prompt for the Config File Content:
+Use this prompt in your Gemini CLI:
+
+In @src/config.php, create a PHP script that defines an array named $dbConfig. This array should contain the following keys and their corresponding values for my database connection: host, dbname, user, and password.
+
+After Gemini generates the file, manually fill in your credentials:
+
+code
+PHP
+download
+content_copy
+expand_less
+// src/config.php
+<?php
+$dbConfig = [
+    'host' => 'apis.com.la', // or '202.137.147.5'
+    'dbname' => 'taxets',
+    'user' => 'admin',
+    'password' => 'Sql_admin@#2024'
+];
+
+Create a Database Connection Class:
+Now, create a reusable class to manage the database connection using these credentials. This is a best practice called a Singleton pattern, which ensures you only connect to the database once per request.
+File: src/Services/Database.php
+
+Prompt for the Database Class:
+
+In @src/Services/Database.php, create a PHP class named Database. This class should:
+
+Use the Singleton design pattern to ensure only one instance of the class is created.
+
+Have a private constructor.
+
+Have a public static method getInstance() that returns the single instance.
+
+Have a public method getConnection() that returns the PDO database connection object.
+
+In its constructor, it should require the config.php file and use the $dbConfig array to establish a PDO connection. It should set the default fetch mode to PDO::FETCH_ASSOC and enable error mode to throw exceptions.
+
+Phase 2, Step 2: Design and Implement the Data Import
+
+
+Let's tackle Phase 2, Step 2 in full detail. We will:
+1.  Define the table to store the imported data.
+2.  Define the table to store the calculation results.
+3.  Generate the full SQL to create these tables.
+4.  Create the definitive column map from the expert's CSV to our new table.
+5.  Provide the detailed prompts to build the import functionality.
+
+---
+
+### **1. Database Design for Input and Output Data**
+
+You are correct, we need two more tables.
+
+#### **Table 1: `calculation_data_profit_tax`**
+This table will be a direct, one-to-one reflection of the clean data we extract from the expert's Excel/CSV file. It will be the "working table" for our calculation engine.
+
+#### **Table 2: `calculation_results_profit_tax`**
+This table will store the final output of our calculation for each company and year, making it easy to generate reports.
+
+---
+
+### **2. SQL Script to Create the New Tables**
+
+Here is the SQL script. Run this to add the necessary tables to your `taxets` database.
+
+```sql
+-- Ensure you are using the correct database
+USE `taxets`;
+
+-- ===================================================================================
+-- SCRIPT TO CREATE TABLES FOR DATA IMPORT AND CALCULATION RESULTS
+-- ===================================================================================
+
+-- Step 1: Create the table to hold the imported data for calculation.
+-- This table can be cleared and re-populated each time a new file is imported.
+-- Table to store clean, RAW input data from Excel or manual entry
+DROP TABLE IF EXISTS `calculation_data_profit_tax`;
+CREATE TABLE `calculation_data_profit_tax` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `tin` VARCHAR(20) NOT NULL,
+  `company_name` VARCHAR(255) NULL,
+  `calculation_year` YEAR NOT NULL,
+  `revenue` DECIMAL(20, 2) NULL,
+  `expense` DECIMAL(20, 2) NULL,
+  `pt_paid` DECIMAL(20, 2) NULL,
+  `reinvested_profit_amount` DECIMAL(20, 2) NULL,
+  `reinvest_date` DATE NULL,
+  `province` VARCHAR(100) NULL,
+  `district` VARCHAR(100) NULL,
+  `sector` VARCHAR(100) NULL,
+  `zone` INT NULL,
+  `is_vat_holder` BOOLEAN NULL,
+  `staff_count` INT NULL,
+  `total_assets_billion` DECIMAL(10, 4) NULL,
+  `annual_turnover_billion` DECIMAL(10, 4) NULL,
+  `investment_license_date` DATE NULL,
+  `date_first_revenue` DATE NULL,
+  `registration_date` DATE NULL,
+  `stock_listing_date` DATE NULL,
+  `tax_holiday_period_years` INT NULL,
+  `is_human_resource_dev` BOOLEAN DEFAULT FALSE,
+  `is_innovative_green_tech` BOOLEAN DEFAULT FALSE,
+  `is_sez_developer` BOOLEAN DEFAULT FALSE,
+  `is_sez_investor` BOOLEAN DEFAULT FALSE,
+  `is_in_sez_specified_activity` BOOLEAN DEFAULT FALSE,
+  `is_public_benefit_income` BOOLEAN DEFAULT FALSE,
+  `is_asset_rent_compliant` BOOLEAN DEFAULT FALSE,
+  `is_real_estate_transfer` BOOLEAN DEFAULT FALSE,
+  `ipl_activity_flags` JSON NULL,
+  'applied_te_ids_from_import' VARCHAR(255) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_tin_year` (`tin`, `calculation_year`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table to store the output of a calculation run
+DROP TABLE IF EXISTS `calculation_results_profit_tax`;
+CREATE TABLE `calculation_results_profit_tax` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `source_data_id` INT NOT NULL,
+  `tin` VARCHAR(20) NOT NULL,
+  `calculation_year` YEAR NOT NULL,
+  `system_net_profit` DECIMAL(20, 2) NOT NULL,
+  `system_benchmark_tax` DECIMAL(20, 2) NOT NULL,
+  `applied_te_provision_id` VARCHAR(50) NULL,
+  `system_actual_tax_payable` DECIMAL(20, 2) NOT NULL,
+  `system_pt_te` DECIMAL(20, 2) NOT NULL,
+  `calculation_timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`source_data_id`) REFERENCES `calculation_data_profit_tax`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+---
+
+### **3. Column Map from Expert CSV to `calculation_data_profit_tax` Table**
+
+This is the definitive map. It links the column letter from "APIS System Test\_Toukta.csv" to the field name in our new database table.
+
+| DB Field Name (`calculation_data_profit_tax`) | Source Column (Letter) | Notes / Transformation Needed |
+| :--- | :--- | :--- |
+| `tin` | D | Direct copy |
+| `calculation_year` | A | Direct copy |
+| `company_name` | C | Direct copy |
+| `revenue` | K | Clean the value (remove `_(* ..._)` and commas) |
+| `expense` | L | Clean the value |
+| `net_profit` | M | Clean the value |
+| `pt_paid` | O | Clean the value |
+| `sector` | J | Direct copy |
+| `is_vat_holder` | AL | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `zone` | G, H | If G=1, zone=1. If H=1, zone=2. Else NULL. (Zone 3 is column I) |
+| `staff_count` | AQ | Direct copy |
+| `total_assets_billion`| AO | Clean the value |
+| `annual_turnover_billion`| AP | Clean the value |
+| `date_first_revenue`| - | **Create this field**: Use `YYYY-01-01` from the `calculation_year` |
+| `investment_license_date`| B | Parse date (e.g., '17-Sep-14') into 'YYYY-MM-DD' format |
+| `registration_date`| T | Parse date |
+| `stock_listing_date`| AR | Parse date |
+| `reinvested_profit_amount`| N | Clean the value |
+| `is_human_resource_dev`| U | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_innovative_green_tech`| V | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_sez_developer` | W | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_sez_investor` | X | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_in_sez_specified_activity`| Y | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_public_benefit_income`| Z | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_asset_rent_compliant`| AA | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `is_real_estate_transfer`| AB | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `invested_in_ipl_art9_activity_2`| AD | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `invested_in_ipl_art9_activity_3`| AE | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `invested_in_ipl_art9_activity_4`| AF | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `invested_in_ipl_art9_activity_5`| AG | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+| `invested_in_ipl_art9_activity_6`| AH | Convert `1` to `TRUE`/`1`, blank to `FALSE`/`0` |
+
+---
+
+### **4. Detailed Guidance to Implement the Import Functionality**
+
+Now you have all the pieces. Let's structure the prompts to build this.
+
+1.  **Create the UI files:**
+    *   `public/import_profit_tax.php`
+    *   `src/Views/pages/import_profit_tax.php`
+    *   `public/process_import.php`
+
+2. Entry Point (public/import_profit_tax.php):
+Prompt:
+In @public/import_profit_tax.php, write a PHP script that sets a page title "Import Profit Tax Data", sets the $pageContent variable to
+ '../src/Views/pages/import_profit_tax_form.php', and then requires the main layout file layout.php.
+    
+3. View File (src/Views/pages/import_profit_tax_form.php):
+Prompt:
+In @src/Views/pages/import_profit_tax_form.php, create the HTML for a file upload page using Bootstrap 5. It should have a heading 
+"Import Profit Tax Data" and a form that POSTs to /process_import.php with enctype="multipart/form-data". The form must contain a file input named 
+import_file that accepts .xlsx files and a submit button. Also, add a section at the top for displaying success or error messages from URL parameters.
+
+------------ to be revised below
+2.  **Prompt for the UI (`import_profit_tax.php`):**
+    > In `@src/Views/pages/import_profit_tax.php`, create an HTML page using Bootstrap 5. It should have a heading "Import Profit Tax Data" and a form with `method="POST"` and `enctype="multipart/form-data"` that submits to `process_import.php`. The form must contain a file input for `.xlsx` files and a submit button.
+
+3.  **Prompt for the Backend (`process_import.php`):**
+    This is the main prompt. You can give this to Gemini CLI and then work with it to refine the code.
+
+    > In `@public/process_import.php`, create a PHP script to process an uploaded XLSX file for profit tax data.
+    >
+    > **The script must:**
+    > 1. Include the Composer autoloader: `require '../vendor/autoload.php';`.
+    > 2. Include our database service: `require '../src/Services/Database.php';`.
+    > 3. Use the `PhpOffice\PhpSpreadsheet` library to load the uploaded XLSX file.
+    > 4. Before importing, clear any old data from the `calculation_data_profit_tax` table using `TRUNCATE TABLE`.
+    > 5. Define a PHP associative array for the column map, linking DB fields like 'tin' to Excel columns like 'D'.
+    > 6. Iterate through the spreadsheet rows starting from row 2.
+    > 7. For each row, extract the data using the column map.
+    > 8. **Perform data cleaning and transformation:**
+    >    - For numeric columns (K, L, M, N, O), create a function to remove non-numeric characters.
+    >    - For date columns (B, T, AR), create a function to parse the date into 'YYYY-MM-DD' format.
+    >    - For the 'zone' field, check columns G and H. If G is 1, set zone to 1. If H is 1, set zone to 2.
+    >    - For all boolean flag columns (U through AH), convert a value of '1' to `1` and any other value to `0`.
+    >    - **Create the `date_first_revenue` field using the value from column A (Year) and format it as 'YYYY-01-01'.**
+    > 9. Prepare and execute a PDO INSERT statement to save the cleaned data into the `calculation_data_profit_tax` table.
+    > 10. After the loop finishes, redirect the user to `run_calculation.php` with a success message.
+
+
+Phase 2, Step 3: Implement the "Run Calculation" Page

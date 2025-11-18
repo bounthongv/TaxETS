@@ -1,0 +1,156 @@
+This is the second half of the core logic. The first part was calculating the "Benchmark Tax" (what companies *should* pay). This part is about calculating the "Actual Tax Payable" by applying the specific tax breaks (TEs) a company is eligible for. The final TE is the difference between the two.
+
+---
+
+### **Part 1: The Plan (Algorithm/Flowchart) for Applying TEs**
+
+This plan outlines how the system will take a company's data, check it against the entire TE Repository, find the applicable tax break, and calculate the final tax payable.
+
+#### **Algorithm for Applying TE Provisions and Calculating Final TE**
+
+**START: Using the `Benchmark_Tax` already calculated for a company/year.**
+
+**[INPUT DATA]**
+*   All the previous inputs (`calculation_year`, `company_id`, etc.).
+*   **Crucially, all the boolean (0/1) flag columns and specific data points from the expert's CSV file**, which correspond to the conditions for TEs. For example:
+    *   `investment_license_date`
+    *   `zone1`, `zone2`
+    *   `sez_developer`, `sez_investor`
+    *   `staff_count`, `total_assets`, `annual_turnover`
+    *   Flags for "Activity 1 of Art. 9, IPL", "Activity 2...", etc.
+    *   `reinvest_net_profit_date`, `reinvest_net_profit_amount`
+*   The `Benchmark_Tax` calculated in the previous stage.
+
+|
+V
+
+**STEP 1: Find All Potentially Applicable TE Provisions**
+|
++---> **[Logic]** For the given `company_id` and `calculation_year`, iterate through every single TE rule in the repository database (`te_provisions` table).
+|
++---> For each `te_provision` in the repository:
+      |
+      +---> **STEP 2: Check Eligibility Conditions**
+            |
+            +---> **[DB Query]** Get all conditions for this `te_provision`.
+            |     `SELECT * FROM te_conditions WHERE te_provision_id = [current_te_id]`
+            |
+            +---> **[Logic]** For each condition row from the database, check if the company's input data satisfies it.
+                  *   Example Condition: `data_field_name`='staff_count', `operator`='LESS_THAN_OR_EQUAL_TO', `value`='50'.
+                  *   Check: Is the company's `staff_count` <= 50?
+                  *   *All* conditions for a single TE provision must be TRUE for the company to be eligible.
+            |
+            +---> **[Decision]** Is the company eligible for this TE provision?
+                  |
+                  +-----> **YES:** Add this `te_provision` to a list called `Eligible_TEs`.
+                  |
+                  +-----> **NO:** Do nothing, move to the next TE provision in the repository.
+|
+V
+
+**STEP 3: Select the Best Applicable TE**
+|
++---> **[Logic]** After checking all provisions, look at the `Eligible_TEs` list.
+|
++---> **[Decision]** How many TEs are in the `Eligible_TEs` list?
+      |
+      +-----> **Case 1: The list is empty (0 eligible TEs).**
+      |       => `Actual_Tax_Payable = Benchmark_Tax`
+      |       -> Go to **FINAL STEP**
+      |
+      +-----> **Case 2: The list has one or more eligible TEs.**
+              + **[Logic]** Determine which TE provides the greatest benefit (i.e., results in the lowest tax).
+              |   *   An 'Exemption' type TE will almost always be the best.
+              |   *   If there are multiple 'Rate Relief' TEs, pick the one with the lowest rate.
+              |   *   (A priority field can be added to the `te_provisions` table to handle complex overlaps).
+              + **[Store Result]** Select the single best `Final_Applicable_TE` from the list.
+|
+V
+
+**STEP 4: Apply the Effect of the Final TE**
+|
++---> **[DB Query]**
+|     `SELECT * FROM te_effects WHERE te_provision_id = [Final_Applicable_TE.id]`
+|
++---> **[Logic]** Based on the `effect_type` from the query result, calculate the `Actual_Tax_Payable`.
+      |
+      +-----> **Effect `SET_TAX_RATE`**:
+      |       `new_rate = [effect.value]` (e.g., 0.03)
+      |       `Actual_Tax_Payable = actual_profit * new_rate`
+      |
+      +-----> **Effect `EXEMPTION`**: (This is a special case of `SET_TAX_RATE`)
+      |       `Actual_Tax_Payable = 0`
+      |
+      +-----> **Effect `REDUCE_TAXABLE_BASE`**:
+              `reduction_amount = [company_data.reinvested_profit_amount]`
+              `new_taxable_profit = actual_profit - reduction_amount`
+              `Actual_Tax_Payable = new_taxable_profit * [Benchmark_Tax_Rate]`
+|
+V
+
+**FINAL STEP: Calculate the Profit Tax TE**
+|
++---> **[Calculation]**
+|     `Profit_Tax_TE_Result = Benchmark_Tax - Actual_Tax_Payable`
+|
++---> **[Logic]** Ensure TE is not negative.
+      `IF Profit_Tax_TE_Result < 0 THEN Profit_Tax_TE_Result = 0`
+|
+V
+
+**END: Final Profit Tax TE Result is ready.**
+=> **`Profit_Tax_TE_Result`**
+
+---
+
+### **Part 2: Database Design for the TE Repository**
+
+This design digitizes the repository tables from slides 11 and 12 into a flexible, rule-engine format.
+
+#### **Table 1: `te_provisions` (The Master List)**
+*This table holds the high-level information for each TE provision.*
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | INT | Primary Key, Auto-increment | The unique TE # (e.g., 1, 2, 7, 12). |
+| effective_from_date	DATE	Not Null	The date the provision becomes legally effective (e.g., '2020-01-01').
+| effective_to_date	DATE	Nullable	The date the provision expires. NULL means it is still active.
+| `legal_basis` | VARCHAR(255) | Nullable | The legal article citation (e.g., "ITL Art. (amended) 16(2)"). |
+| `tax_type` | VARCHAR(50) | Not Null | The tax this applies to (e.g., "Profit Tax"). |
+| `te_type` | ENUM('Rate Relief', 'Exemption', 'Deduction', 'Deferral') | Not Null | The general category of the TE. |
+| `description` | TEXT | Nullable | The full textual description from the law. |
+| `purpose_objective`| VARCHAR(255) | Nullable | The policy goal (e.g., "Investment Promotion"). |
+| `priority` | INT | Not Null, Default 100 | A number to resolve overlaps. Lower numbers apply first (e.g., Exemption priority=10, Rate Relief=50). |
+
+#### **Table 2: `te_conditions` (The "IF" part of the rule)**
+*This table defines all the conditions that must be met for a TE to apply.*
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | INT | Primary Key, Auto-increment | Unique ID for the condition. |
+| `te_provision_id` | INT | Not Null, Foreign Key to `te_provisions.id` | Links this condition to a specific TE. |
+| `data_field_name` | VARCHAR(100) | Not Null | A standardized name for the data point being checked (e.g., 'staff_count', 'zone', 'years_since_license'). |
+| `operator` | ENUM('=', '!=', '>', '>=', '<', '<=', 'IN') | Not Null | The comparison operator. |
+| `value` | VARCHAR(255) | Not Null | The value to compare against (e.g., "50", "Zone 1", "['Activity 2', 'Activity 3']"). |
+
+#### **Table 3: `te_effects` (The "THEN" part of the rule)**
+*This table defines what happens to the tax calculation if the conditions are met.*
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | INT | Primary Key, Auto-increment | Unique ID for the effect. |
+| `te_provision_id` | INT | Not Null, Foreign Key to `te_provisions.id` | Links this effect to a specific TE. |
+| `effect_type` | ENUM('SET_TAX_RATE', 'REDUCE_TAXABLE_BASE') | Not Null | The type of calculation modification. |
+| `parameter_name` | VARCHAR(100) | Nullable | The variable to be modified (e.g., 'profit_tax_rate', 'taxable_profit'). |
+| `value` | VARCHAR(255) | Not Null | The new value or a reference to a data field (e.g., "0.03", "0", "reinvested_profit_amount"). |
+
+This comprehensive design provides the full structure needed to build the second, more complex part of your application. It directly supports the algorithm and is flexible enough to handle the variety of rules in the Profit Tax TE repository.
+
+The very first step of the TE application algorithm now gets a crucial filter:
+STEP 1 (Revised): Find All Potentially Applicable TE Provisions
+|
++---> [DB Query]
+| SELECT * FROM te_provisions
+| WHERE [calculation_year] >= YEAR(effective_from_date)
+| AND ([calculation_year] <= YEAR(effective_to_date) OR effective_to_date IS NULL)
+

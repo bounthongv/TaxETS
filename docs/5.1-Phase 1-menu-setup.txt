@@ -1,0 +1,89 @@
+Excellent, moving to the UI mockup is the perfect next step. 
+
+### **The Strategy: A Component-Based Approach**
+
+We will build the main application "shell" first, which consists of:
+1.  **A main layout file:** The overall HTML structure.
+2.  **A sidebar component:** The main navigation menu.
+3.  **A content area:** Where different pages will be loaded.
+
+Let's use a popular and simple CSS framework like **Bootstrap 5** to get the styling and components (like the sidebar and tables) quickly without writing a lot of custom CSS.
+
+---
+
+### **Step-by-Step Prompts for Gemini CLI**
+
+Here are the precise, step-by-step prompts you can use in your Gemini CLI to build the UI shell.
+
+#### **Step 1: Create the Main Layout File**
+
+First, create the main template file that will be used by all other pages.
+
+1.  **Create the file in VS Code:** `public/layout.php`
+2.  **Use the following prompt in your Gemini CLI:**
+
+> In the file `@public/layout.php`, create a complete HTML5 boilerplate using Bootstrap 5 from a CDN. The structure should be a dashboard layout with a fixed vertical sidebar on the left and a main content area on the right.
+>
+> The layout should have three main sections:
+> 1. A top header bar (you can leave this simple for now).
+> 2. A `div` for the sidebar component.
+> 3. A `div` for the main page content.
+>
+> Use PHP `include` statements as placeholders for the sidebar and the content. For the main content, check if a `$pageContent` variable is set, and if so, include it.
+>
+> Add comments in the code to indicate where the sidebar and main content will be loaded.
+
+
+
+#### **Step 2: Create the Sidebar Component**
+
+Now let's create the actual navigation menu, based on the screenshots from your reports.
+
+1.  **Create the file in VS Code:** `src/Views/components/sidebar.php`
+2.  **Use the following prompt in your Gemini CLI:**
+
+> In the file `@src/Views/components/sidebar.php`, create the HTML for a vertical navigation sidebar using Bootstrap 5 list-group or nav components.
+>
+> The sidebar should have the following top-level menu items, with sub-menus where appropriate, based on the structure from the project reports:
+>
+> *   **System**
+> *   **Data Dictionary** (this should be a dropdown/collapsible item)
+>     *   Benchmark
+>     *   Repository
+>     *   ... (add other items from the report screenshot)
+> *   **Get Tax Data by Import from Excel** (dropdown/collapsible)
+>     *   Data Requirements to identify Repository
+>     *   Data Requirements to estimate TE
+> *   **Run Tax Expenditure**
+> *   **Report** (dropdown/collapsible)
+>
+> Use appropriate Bootstrap icons (like from Bootstrap Icons CDN) next to each menu item. Make sure the links are placeholders for now (href="#").
+
+
+#### **Step 3: Create Your First Page (e.g., the Dashboard)**
+
+Let's create a simple page that *uses* our new layout.
+
+1.  **Create the file in VS Code:** `public/index.php`
+2.  **Use the following prompt in your Gemini CLI:**
+
+> In the file `@public/index.php`, write a PHP script that uses the main layout file.
+>
+> 1.  Define a variable `$pageContent` and set its value to the path of a content file, for example `../src/Views/pages/dashboard.php`.
+> 2.  Then, `require` the `layout.php` file.
+
+3.  **Now, create the content file itself:** `src/Views/pages/dashboard.php`
+4.  **Prompt for the content file:**
+
+> In `@src/Views/pages/dashboard.php`, just create a simple H1 tag that says "Dashboard" and a paragraph of placeholder text.
+
+### **Putting It All Together**
+
+Now, when you navigate to `index.php` in your browser, you should see your complete application shell: the sidebar on the left and the "Dashboard" title in the main content area.
+
+**Why this approach is powerful:**
+To create a new page, like the "Benchmark" page, you simply:
+1.  Create a new content file: `src/Views/pages/benchmark.php`.
+2.  Create a new entrypoint file in `/public` called `benchmark.php` that sets `$pageContent = '../src/Views/pages/benchmark.php';` and includes the layout.
+3.  Update the link in your sidebar to point to `benchmark.php`.
+
