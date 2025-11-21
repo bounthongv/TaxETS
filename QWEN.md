@@ -97,3 +97,6 @@ The `/docs` directory contains comprehensive planning documents:
 - `5-*` files: Implementation action plans for different phases
 
 The system is designed to handle both accounting holder and non-accounting holder enterprises, with different tax calculation methods for each type. It supports various enterprise characteristics like VAT holder status, zone classification, sector-specific rates, and special provisions under Investment Promotion Law (IPL).
+
+## Qwen Added Memories
+- Fixed the TaxETS import process by resolving the SQLSTATE[HY093] error in process_import.php. The issue was that the $companyData array contained extra fields not present in the database schema. Solution: Created a filtered data array with only fields that exist in the database table, then used that for the INSERT statement. Also corrected the column name cross_check_difference (with 2 's') and made sure it exists in the database schema.

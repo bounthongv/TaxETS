@@ -1,0 +1,38 @@
+2025-11-21 04:20:25 - Script started.
+2025-11-21 04:20:25 - Python executable path: /var/www/html/taxets/venv/bin/python
+2025-11-21 04:20:25 - File upload verified.
+2025-11-21 04:20:25 - File type verified: xlsx
+2025-11-21 04:20:25 - Uploaded file moved to: /tmp/taxets_import_691fe889d2abe.xlsx
+2025-11-21 04:20:25 - Python script path: /var/www/html/taxets/parse_excel.py
+2025-11-21 04:20:25 - Executing command: /var/www/html/taxets/venv/bin/python '/var/www/html/taxets/parse_excel.py' '/tmp/taxets_import_691fe889d2abe.xlsx' 2>&1
+2025-11-21 04:20:26 - Python script execution finished.
+2025-11-21 04:20:26 - Temporary Excel file deleted.
+2025-11-21 04:20:26 - Python script returned data. Attempting JSON decode.
+2025-11-21 04:20:26 - JSON decoded successfully. Number of records: 21
+2025-11-21 04:20:26 - Database transaction started.
+2025-11-21 04:20:26 - SQL statements prepared.
+2025-11-21 04:20:26 - TaxCalculator instantiated.
+2025-11-21 04:20:26 - Calculation Error for TIN: 763723844-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 763723844-000, Year: 2020 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 602733805-900, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 379505006-900, Year: 2019 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 140243135-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 851705381-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 909954240-900, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 729549606-900, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 765173026-000, Year: 2019 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 670341668-000, Year: 2022 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 508054437-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 170631442-000, Year: 2020 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 126321627-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 587445017-000, Year: 2021 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 822868467-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 057258273-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 773663486-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 210408429-000, Year: 2021 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 588616406-900, Year: 2019 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 087635121-000, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - Calculation Error for TIN: 232280925-900, Year: 2018 - SQLSTATE[HY093]: Invalid parameter number: parameter was not defined
+2025-11-21 04:20:26 - 0 rows imported and 0 rows calculated and results stored.
+2025-11-21 04:20:26 - Database transaction committed.
+2025-11-21 04:20:26 - Redirecting to success page.
