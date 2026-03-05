@@ -1,8 +1,0 @@
-/tax-te-calculator
-|-- /db_setup           <-- Put your SQL scripts here
-|-- /src
-|   |-- /Models         <-- PHP classes for your DB tables
-|   |-- /Services       <-- The core calculation logic will go here
-|   |-- /Controllers    <-- To handle user input from the web UI
-|-- /public             <-- Your index.php and UI assets (CSS, JS)
-|-- composer.json       <-- For managing PHP libraries

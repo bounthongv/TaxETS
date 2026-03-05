@@ -1,0 +1,7 @@
+﻿{
+  "name": "tax-ets/tax-ets",
+  "description": "Tax Expenditure Estimation System",
+  "require": {
+    "phpoffice/phpspreadsheet": "^1.29"
+  }
+}

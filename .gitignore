@@ -1,2 +1,28 @@
-/vendor/
-/venv/
+# Dependencies
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Config (sensitive) - keep template only
+# config.php - add your own credentials
+
+# Temporary images from PDF conversion
+tmp_images/
+
+# Backup files
+*.bak
+*~
+
+# Composer
+composer.phar
