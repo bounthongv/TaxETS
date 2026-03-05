@@ -6,6 +6,11 @@
     --body-bg: #f4f6f9;
 }
 
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     background-color: var(--body-bg);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -21,6 +26,34 @@ body {
     height: 100vh;
     position: fixed;
     z-index: 999;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4a6b5a var(--sidebar-bg);
+}
+
+/* Custom scrollbar for sidebar */
+#sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+#sidebar::-webkit-scrollbar-track {
+    background: var(--sidebar-bg);
+}
+#sidebar::-webkit-scrollbar-thumb {
+    background-color: #4a6b5a;
+    border-radius: 3px;
+}
+
+/* Sidebar Styling */
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    transition: all 0.3s;
+    height: 100vh;
+    position: fixed;
+    z-index: 999;
+    overflow-y: auto;
 }
 
 #sidebar .sidebar-header {
@@ -63,6 +96,7 @@ body {
     margin-left: 250px;
     min-height: 100vh;
     transition: all 0.3s;
+    overflow-y: auto;
 }
 
 .topbar {
