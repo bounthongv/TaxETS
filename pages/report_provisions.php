@@ -10,8 +10,15 @@ $batches = $pdo->query("SELECT DISTINCT import_batch_id, tax_year FROM companies
 
 $report_data = [];
 if ($selected_batch) {
-    // 1. Get all provisions
-    $provisions = $pdo->query("SELECT id, provision_number, description FROM profit_provisions ORDER BY provision_number")->fetchAll();
+    // 1. Get all provisions (from the selected batch's tax_year)
+    $batch_year = $pdo->prepare("SELECT tax_year FROM companies WHERE import_batch_id = ? LIMIT 1");
+    $batch_year->execute([$selected_batch]);
+    $year_row = $batch_year->fetch();
+    $tax_year = $year_row ? (int)$year_row['tax_year'] : date('Y');
+    
+    $provisions = $pdo->prepare("SELECT id, provision_number, description FROM profit_provisions WHERE ? >= start_year AND ? <= end_year ORDER BY provision_number");
+    $provisions->execute([$tax_year, $tax_year]);
+    $provisions = $provisions->fetchAll();
     
     // 2. Efficiently count matches per provision from the te_profit_result table
     // matched_provisions is a comma-separated string like "1, 7, 9"

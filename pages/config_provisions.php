@@ -9,11 +9,12 @@ $msg_type = 'success';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
         if ($_POST['action'] == 'add_provision') {
-            $stmt = $pdo->prepare("INSERT INTO profit_provisions (provision_number, legal_reference, description, target_rate, is_exemption) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO profit_provisions (provision_number, legal_reference, description, target_rate, is_exemption, start_year, end_year) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $_POST['provision_number'], $_POST['legal_reference'], $_POST['description'],
                 $_POST['target_rate'] !== '' ? $_POST['target_rate'] : null,
-                isset($_POST['is_exemption']) ? 1 : 0
+                isset($_POST['is_exemption']) ? 1 : 0,
+                (int)$_POST['start_year'], (int)$_POST['end_year']
             ]);
             $message = "Provision added.";
         } elseif ($_POST['action'] == 'delete_provision') {
@@ -43,12 +44,13 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="card">
   <div class="card-body">
     <table class="table table-bordered table-hover datatable w-100">
-      <thead class="table-light"><tr><th>Prov #</th><th>Legal Reference</th><th>Description</th><th>Target Rate</th><th>Rules</th><th>Actions</th></tr></thead>
+      <thead class="table-light"><tr><th>Prov #</th><th>Legal Reference</th><th>Period</th><th>Description</th><th>Target Rate</th><th>Rules</th><th>Actions</th></tr></thead>
       <tbody>
         <?php foreach ($provisions as $r): ?>
         <tr>
           <td class="fw-bold text-center"><?= htmlspecialchars($r['provision_number']) ?></td>
           <td><?= htmlspecialchars($r['legal_reference']) ?></td>
+          <td><?= $r['start_year'] ?? 2000 ?>-<?= $r['end_year'] ?? 2099 ?></td>
           <td><?= htmlspecialchars($r['description']) ?></td>
           <td>
             <?php if ($r['is_exemption']): ?><span class="badge bg-success">Exemption (0%)</span>
@@ -77,8 +79,11 @@ require_once __DIR__ . '/../includes/header.php';
       <div class="modal-header bg-primary text-white"><h5 class="modal-title">Add New Provision</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
         <div class="row mb-3">
-          <div class="col-4"><label>Provision #</label><input type="text" name="provision_number" class="form-control" required placeholder="1A"></div>
-          <div class="col-8"><label>Legal Reference</label><input type="text" name="legal_reference" class="form-control" required placeholder="IPL Art. 9 Sect 1"></div>
+          <div class="col-3"><label>Provision #</label><input type="text" name="provision_number" class="form-control" required placeholder="1A"></div>
+          <div class="col-5"><label>Legal Reference</label><input type="text" name="legal_reference" class="form-control" required placeholder="IPL Art. 9 Sect 1"></div>
+          <div class="col-4"><label>Period</label>
+            <div class="input-group"><input type="number" name="start_year" class="form-control" value="2000" required><span class="input-group-text">-</span><input type="number" name="end_year" class="form-control" value="2099" required></div>
+          </div>
         </div>
         <div class="mb-3"><label>Description</label><input type="text" name="description" class="form-control" required placeholder="Description of this tax relief"></div>
         <div class="row mb-3 align-items-end">

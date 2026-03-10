@@ -161,7 +161,8 @@ class TEEngine {
      */
     private function matchProvisions(array $c): array {
         $matched = [];
-        $provisions = $this->pdo->query("SELECT p.*, GROUP_CONCAT(CONCAT(cond.field_name,'|',cond.operator,'|',cond.value_1,'|',COALESCE(cond.value_2,'')) ORDER BY cond.id SEPARATOR ';;') AS conditions FROM profit_provisions p LEFT JOIN profit_provision_conditions cond ON cond.provision_id = p.id GROUP BY p.id ORDER BY p.id")->fetchAll();
+        $year = (int)$c["tax_year"];
+        $provisions = $this->pdo->query("SELECT p.*, GROUP_CONCAT(CONCAT(cond.field_name,'|',cond.operator,'|',cond.value_1,'|',COALESCE(cond.value_2,'')) ORDER BY cond.id SEPARATOR ';;') AS conditions FROM profit_provisions p LEFT JOIN profit_provision_conditions cond ON cond.provision_id = p.id WHERE $year >= p.start_year AND $year <= p.end_year GROUP BY p.id ORDER BY p.id")->fetchAll();
 
         foreach ($provisions as $prov) {
             if (empty($prov["conditions"])) continue; // Skip provisions with no rules

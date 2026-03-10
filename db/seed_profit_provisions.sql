@@ -13,27 +13,27 @@ ALTER TABLE profit_provisions AUTO_INCREMENT = 1;
 -- Insert Provisions
 -- =============================================================
 
-INSERT INTO profit_provisions (provision_number, legal_reference, description, target_rate, is_exemption) VALUES
-('1',  'ITL Art.16(2)',      'Small entity: 6-50 staff, assets <=1.5B, turnover <=3B, registered <=3 years', 3.00, 0),
-('2',  'ITL Art.16(2)',      'Medium entity: 51-99 staff, assets <=6B, turnover <=6B, registered <=3 years', 5.00, 0),
-('3',  'ITL Art.16(2)',      'HR development businesses (schools, hospitals, etc.) after tax holiday', 5.00, 0),
-('4',  'ITL Art.16(2)',      'Eco-friendly/clean energy tech businesses after tax holiday', 7.00, 0),
-('5',  'ITL Art.16(2)',      'Companies listed on Lao Stock Exchange (within 48 months of listing)', 13.00, 0),
-('6',  'ITL Art.16(2)',      'Micro enterprises registered as VAT holders (0.1%)', 0.10, 0),
-('7',  'IPL Art.9,10,11',   'Zone 1: IPL Art.9 activities 1,4,7,8,9 - Exemption within 120 months', NULL, 1),
-('8',  'IPL Art.9,10,11',   'Zone 2: IPL Art.9 activities 1,4,7,8,9 - Exemption within 48 months', NULL, 1),
-('9',  'IPL Art.14',         'Re-invested profit exemption for 1 year (12 months from re-invest date)', NULL, 1),
-('10', 'IPL Art.9,10,11',   'Zone 1: IPL Art.9 activities 2,3,5,6 - Exemption within 180 months', NULL, 1),
-('11', 'IPL Art.9,10,11',   'Zone 2: IPL Art.9 activities 2,3,5,6 - Exemption within 112 months', NULL, 1),
-('12', 'IPL Art.9,10,11',   'SEZ Zone 1 developer + activity code Y - Exemption within 192 months', NULL, 1),
-('13', 'IPL Art.9,10,11',   'SEZ Zone 1 developer + activity code Y - 5% rate months 192-252', 5.00, 0),
-('14', 'IPL Art.9,10,11',   'SEZ Zone 2 developer + activity code Y - Exemption within 96 months', NULL, 1),
-('15', 'IPL Art.9,10,11',   'SEZ Zone 2 developer + activity code Y - 5% rate months 96-156', 5.00, 0),
-('16', 'IPL Art.9,10,11',   'SEZ investor (Zone 1 or 2) + specific activities - Exemption phase', NULL, 1),
-('17', 'IPL Art.9,10,11',   'SEZ investor (Zone 1 or 2) + specific activities - Rate relief after exemption', NULL, 0),
-('18', 'ITL Art.',           'Income from activities providing public benefit or social purpose', NULL, 1),
-('19', 'ITL Art.',           'Rental income: compliant business operator', NULL, 1),
-('20', 'ITL Art.',           'Income from transfer of real estate rights (on balance sheet)', NULL, 1);
+INSERT INTO profit_provisions (provision_number, legal_reference, description, target_rate, is_exemption, start_year, end_year) VALUES
+('1',  'ITL Art.16(2)',      'Small entity: 6-50 staff, assets <=1.5B, turnover <=3B, registered <=3 years', 3.00, 0, 2018, 2099),
+('2',  'ITL Art.16(2)',      'Medium entity: 51-99 staff, assets <=6B, turnover <=6B, registered <=3 years', 5.00, 0, 2018, 2099),
+('3',  'ITL Art.16(2)',      'HR development businesses (schools, hospitals, etc.) after tax holiday', 5.00, 0, 2018, 2099),
+('4',  'ITL Art.16(2)',      'Eco-friendly/clean energy tech businesses after tax holiday', 7.00, 0, 2018, 2099),
+('5',  'ITL Art.16(2)',      'Companies listed on Lao Stock Exchange (within 48 months of listing)', 13.00, 0, 2018, 2099),
+('6',  'ITL Art.16(2)',      'Micro enterprises registered as VAT holders (0.1%)', 0.10, 0, 2018, 2099),
+('7',  'IPL Art.9,10,11',   'Zone 1: IPL Art.9 activities 1,4,7,8,9 - Exemption within 120 months', NULL, 1, 2018, 2099),
+('8',  'IPL Art.9,10,11',   'Zone 2: IPL Art.9 activities 1,4,7,8,9 - Exemption within 48 months', NULL, 1, 2018, 2099),
+('9',  'IPL Art.14',         'Re-invested profit exemption for 1 year (12 months from re-invest date)', NULL, 1, 2018, 2099),
+('10', 'IPL Art.9,10,11',   'Zone 1: IPL Art.9 activities 2,3,5,6 - Exemption within 180 months', NULL, 1, 2018, 2099),
+('11', 'IPL Art.9,10,11',   'Zone 2: IPL Art.9 activities 2,3,5,6 - Exemption within 112 months', NULL, 1, 2018, 2099),
+('12', 'IPL Art.9,10,11',   'SEZ Zone 1 developer + activity code Y - Exemption within 192 months', NULL, 1, 2018, 2099),
+('13', 'IPL Art.9,10,11',   'SEZ Zone 1 developer + activity code Y - 5% rate months 192-252', 5.00, 0, 2018, 2099),
+('14', 'IPL Art.9,10,11',   'SEZ Zone 2 developer + activity code Y - Exemption within 96 months', NULL, 1, 2018, 2099),
+('15', 'IPL Art.9,10,11',   'SEZ Zone 2 developer + activity code Y - 5% rate months 96-156', 5.00, 0, 2018, 2099),
+('16', 'IPL Art.9,10,11',   'SEZ investor (Zone 1 or 2) + specific activities - Exemption phase', NULL, 1, 2018, 2099),
+('17', 'IPL Art.9,10,11',   'SEZ investor (Zone 1 or 2) + specific activities - Rate relief after exemption', NULL, 0, 2018, 2099),
+('18', 'ITL Art.',           'Income from activities providing public benefit or social purpose', NULL, 1, 2018, 2099),
+('19', 'ITL Art.',           'Rental income: compliant business operator', NULL, 1, 2018, 2099),
+('20', 'ITL Art.',           'Income from transfer of real estate rights (on balance sheet)', NULL, 1, 2018, 2099);
 
 -- =============================================================
 -- Insert Rule Conditions for each Provision
