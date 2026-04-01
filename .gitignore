@@ -26,3 +26,28 @@ tmp_images/
 
 # Composer
 composer.phar
+
+# Temporary debug/utility scripts
+analyze_*.php
+check_*.php
+debug_*.php
+dump_*.php
+read_*.php
+migrate_*.php
+test_excel.php
+
+# Temporary data files
+*.json
+temp_*.txt
+nul
+
+# Screenshots / images
+*.png
+*.jpg
+
+# AI assistant configs
+GEMINI.md
+QWEN.md
+
+# Log files
+*.log

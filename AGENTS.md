@@ -2,216 +2,148 @@
 
 ## Project Overview
 
-Tax-ETS (Tax Expenditure Estimation System) is a PHP/MySQL web application for calculating and tracking tax expenditure provisions. The system processes company financial data against tax rules to estimate tax benefits.
+Tax-ETS (Tax Expenditure Estimation System) is a PHP/MySQL web application for calculating and tracking tax expenditure provisions. It processes company financial data against configurable tax rules to estimate tax benefits across Corporate Income Tax (CIT), VAT, and Personal Income Tax (PIT).
 
 ## Tech Stack
 
-- **Language**: PHP 8.x
-- **Database**: MySQL
-- **Dependencies**: PhpSpreadsheet (phpoffice/phpspreadsheet)
-- **UI**: Bootstrap 5, DataTables, Font Awesome
+- **Language**: PHP 8.x (no framework)
+- **Database**: MySQL / MariaDB
+- **Dependencies**: PhpSpreadsheet (`phpoffice/phpspreadsheet`) via Composer
+- **Frontend**: Bootstrap 5, DataTables, Font Awesome, Chart.js
 
 ---
 
 ## Build, Lint & Test Commands
 
-### Dependencies
 ```bash
-composer install
+composer install                    # Install dependencies
+php -S localhost:8000               # Start dev server
+php tests/test_engine.php           # Run engine tests (single test file)
 ```
 
-### Running Tests
-```bash
-# Run the tax engine test file
-php tests/test_engine.php
-```
+No linting or static analysis tools (phpstan, phpcs, php-cs-fixer) are currently configured. No PHPUnit — tests are plain PHP scripts using `echo` and `ReflectionClass`.
 
-### PHP Server
-```bash
-# Start local development server
-php -S localhost:8000
-```
+---
+
+## Project Structure
+
+| Directory | Purpose |
+|-----------|---------|
+| `includes/` | Core engine classes and helpers (`db.php`, `te_profit_tax_engine.php`, `te_vat_engine.php`, `te_pit_engine.php`) |
+| `pages/` | Page controllers/views (import, config, reports) |
+| `db/` | SQL schema (`schema.sql`) and seed files (`seed_*.sql`) |
+| `tests/` | Test scripts (`test_engine.php`) |
+| `assets/` | CSS, JS, images |
+| `docs/` | Requirements and templates |
+| `implementation/` | Development plans |
 
 ---
 
 ## Code Style Guidelines
 
-### General Conventions
+### General Rules
 
-- Use `<?php` opening tags (no short tags `<?`)
-- Always use strict type declarations where possible
-- Use meaningful, descriptive names for variables, functions, and classes
-- Keep functions focused and small (under 50 lines where possible)
+- Use `<?php` tags (no short tags `<?`)
+- 4-space indentation (no tabs)
+- Opening brace on same line for classes/methods
+- Keep functions under 50 lines where possible
 
 ### Naming Conventions
 
 | Element | Convention | Example |
 |---------|-----------|---------|
-| Classes | PascalCase | `TEEngine`, `ProfitCalculator` |
-| Methods | camelCase | `calculateBatch()`, `matchProvisions()` |
+| Classes | PascalCase | `TEEngine`, `TEVatEngine` |
+| Methods | camelCase | `calculateBatch()`, `lookupStandardRate()` |
 | Variables | camelCase | `$benchmark_pt`, `$total_te` |
 | Constants | UPPER_SNAKE_CASE | `DB_HOST`, `BASE_URL` |
-| Database Tables | snake_case | `companies`, `bm_profit_standard` |
+| DB Tables | snake_case | `companies`, `bm_profit_standard` |
+| DB Columns | snake_case with `_id` suffix for FKs | `company_id`, `provision_id` |
 
-### File Organization
+### Type Hints
 
-- **includes/**: Core classes and helpers (db.php, te_profit_tax_engine.php)
-- **pages/**: Page controllers/views
-- **db/**: SQL schemas and seed data
-- **tests/**: Test files
-- **assets/**: CSS, JS, images
-
-### PHP Type Hints
-
-Use type hints for function parameters and return types:
+Always use parameter and return type hints:
 
 ```php
-// Good
-public function calculateBatch(string $batch_id): array {
-    // ...
-}
-
-private function lookupStandardRate(int $year, string $sector): ?float {
-    // ...
-}
-
-// Avoid
-function calculateBatch($batch_id) {
-    // ...
-}
+public function calculateBatch(string $batch_id): array { ... }
+private function lookupStandardRate(int $year, string $sector): ?float { ... }
 ```
 
-### SQL Queries
+### Imports & Includes
 
-- Always use prepared statements with parameter binding to prevent SQL injection
-- Use `FETCH_ASSOC` mode for consistent array access
-
-```php
-// Good
-$stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_profit_standard WHERE start_year <= ? AND end_year >= ?");
-$stmt->execute([$year, $year]);
-$row = $stmt->fetch();
-
-// Avoid - SQL injection risk
-$this->pdo->query("SELECT * FROM companies WHERE id = $id");
-```
-
-### Error Handling
-
-- Wrap database operations in try-catch blocks
-- Log errors appropriately and return user-friendly messages
-- Never expose sensitive information (database credentials, stack traces) to users
-
-```php
-try {
-    $result = $this->calculateCompany($company);
-    // ...
-} catch (Exception $e) {
-    $errors[] = "Company ID {$company['id']}: " . $e->getMessage();
-    // Log for debugging: error_log($e->getMessage());
-}
-```
-
-### Code Formatting
-
-- Indent with 4 spaces (not tabs)
-- One space after commas, around operators
-- Opening brace on same line for classes/functions
-- Use blank lines to separate logical code blocks
-
-```php
-class TEEngine {
-    private PDO $pdo;
-
-    public function __construct(PDO $pdo) {
-        $this->pdo = $pdo;
-    }
-
-    public function calculateBatch(string $batch_id): array {
-        // ...
-    }
-}
-```
-
-### Database Conventions
-
-- Foreign keys use `_id` suffix: `company_id`, `provision_id`
-- Boolean fields: `is_vat_holder`, `is_active`
-- Dates: `YYYY-MM-DD` format in database
-- Use `created_at`, `updated_at` timestamps where applicable
-
-### Import/Require Statements
-
-- Use absolute paths with `__DIR__` for includes
+- Use `__DIR__` for absolute paths
 - Group requires at the top of files
+- Use `require_once` (not `include`)
 
 ```php
 require_once __DIR__ . '/../includes/te_profit_tax_engine.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 ```
 
-### Working with Dates
+### Database Access
 
-- Use PHP `DateTime` class for date operations
-- Parse Excel dates using `PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject()`
+- Always use `getDbConnection()` from `includes/db.php` — returns PDO instance
+- Use prepared statements with parameter binding — never interpolate variables into SQL
+- Use `FETCH_ASSOC` mode (set as default in `db.php`)
 
 ```php
-private function parseDate($val): DateTime {
-    if (is_numeric($val)) {
-        return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($val);
-    }
-    return new DateTime($val);
+$stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_profit_standard WHERE start_year <= ? AND end_year >= ?");
+$stmt->execute([$year, $year]);
+$row = $stmt->fetch();
+```
+
+### Error Handling
+
+- Wrap DB operations in try-catch blocks
+- Collect errors into arrays, return alongside results
+- Never expose credentials or stack traces to users
+
+```php
+try {
+    $result = $this->calculateCompany($company);
+} catch (Exception $e) {
+    $errors[] = "Company ID {$company['id']}: " . $e->getMessage();
 }
 ```
 
-### UI/View Guidelines
+### Date Handling
 
-- Use Bootstrap 5 classes for styling
-- Keep PHP logic out of views where possible
-- Use short echo tags `<?= $var ?>` for outputting escaped data
+- Use PHP `DateTime` class
+- Parse Excel serial dates: `\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($val)`
+
+### Views / UI
+
+- Include `header.php`, `sidebar.php`, `footer.php` on every page
+- Use Bootstrap 5 classes for layout/styling
+- Use short echo tags `<?= htmlspecialchars($var) ?>` for output
+- Keep business logic out of view files
+
+---
+
+## Engine Architecture
+
+Three engine classes handle tax calculations, all following the same pattern — constructor takes `PDO`, `calculateBatch(string $batch_id): array` is the main entry point:
+
+- **`TEEngine`** (`includes/te_profit_tax_engine.php`) — Corporate Income Tax
+- **`TEVatEngine`** (`includes/te_vat_engine.php`) — VAT
+- **`TEPitEngine`** (`includes/te_pit_engine.php`) — Personal Income Tax
+
+Benchmark rates are stored in `bm_*` database tables — never hardcode rates in engine code.
 
 ---
 
 ## Common Tasks
 
-### Adding a New Tax Rule/Benchmark Rate
+**Adding a tax rule/benchmark rate**: Add data to the appropriate `bm_*` table via `db/schema.sql` or seed file. Add lookup method in the engine if custom logic is needed.
 
-1. Add data to appropriate table in `db/schema.sql` or create migration
-2. Seed data in `db/seed_*.sql` files if needed
-3. Add lookup method in `te_profit_tax_engine.php` if custom logic required
+**Adding a new page**: Create file in `pages/`, include header/sidebar/footer. Follow existing page patterns (see `index.php`).
 
-### Adding a New Page
-
-1. Create file in `pages/` directory
-2. Include header/sidebar/footer:
-   ```php
-   <?php require_once __DIR__ . "/../includes/header.php"; ?>
-   <!-- Page content -->
-   <?php require_once __DIR__ . "/../includes/footer.php"; ?>
-   ```
-
-### Running Calculations
-
-1. Import company data via import_cit.php page
-2. Configure provisions in config_provisions.php
-3. Run calculation via API or page
-4. View results in report_summary.php
+**Running calculations**: Import data via import page → configure provisions → run calculation → view results in reports.
 
 ---
 
-## Testing Guidelines
+## Security
 
-- Test with both valid and edge case data
-- Use reflection to test private methods when needed
-- Mock PDO for unit tests (see test_engine.php example)
-- Verify database state after operations
-
----
-
-## Security Considerations
-
-- Never commit config.php with real credentials
-- Use environment variables for sensitive data in production
+- Never commit `config.php` with real credentials
 - Validate and sanitize all user inputs
-- Use CSRF tokens for forms
-- Output encode when displaying user data in views
+- Use CSRF tokens on forms
+- Output-encode user data in views with `htmlspecialchars()`

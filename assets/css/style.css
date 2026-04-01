@@ -8,7 +8,7 @@
 
 html, body {
     height: 100%;
-    overflow: hidden;
+    
 }
 
 body {
@@ -115,3 +115,4 @@ body {
 .table th {
     background-color: #f8f9fa;
 }
+
