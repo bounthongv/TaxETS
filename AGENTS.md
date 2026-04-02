@@ -21,7 +21,7 @@ php -S localhost:8000               # Start dev server
 php tests/test_engine.php           # Run engine tests (single test file)
 ```
 
-No linting or static analysis tools (phpstan, phpcs, php-cs-fixer) are currently configured. No PHPUnit — tests are plain PHP scripts using `echo` and `ReflectionClass`.
+No linting or static analysis tools (phpstan, phpcs, php-cs-fixer) are currently configured. No PHPUnit — tests are plain PHP scripts using `echo` and `ReflectionClass`. When adding tests, run the single test file above and verify output manually.
 
 ---
 
@@ -30,12 +30,12 @@ No linting or static analysis tools (phpstan, phpcs, php-cs-fixer) are currently
 | Directory | Purpose |
 |-----------|---------|
 | `includes/` | Core engine classes and helpers (`db.php`, `te_profit_tax_engine.php`, `te_vat_engine.php`, `te_pit_engine.php`) |
-| `pages/` | Page controllers/views (import, config, reports) |
+| `pages/` | Page controllers/views — each file handles both form processing and HTML output |
 | `db/` | SQL schema (`schema.sql`) and seed files (`seed_*.sql`) |
 | `tests/` | Test scripts (`test_engine.php`) |
 | `assets/` | CSS, JS, images |
-| `docs/` | Requirements and templates |
-| `implementation/` | Development plans |
+| `docs/` | Requirements, templates, and test Excel files |
+| `implementation/` | Development plans and technical specs |
 
 ---
 
@@ -73,8 +73,11 @@ private function lookupStandardRate(int $year, string $sector): ?float { ... }
 - Use `__DIR__` for absolute paths
 - Group requires at the top of files
 - Use `require_once` (not `include`)
+- Load order: `config.php` → `db.php` → engine classes → `vendor/autoload.php` → `header.php`
 
 ```php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/te_profit_tax_engine.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 ```
@@ -109,13 +112,14 @@ try {
 
 - Use PHP `DateTime` class
 - Parse Excel serial dates: `\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($val)`
+- Configurable evaluation date via `EVALUATION_DATE` constant in `config.php`
 
 ### Views / UI
 
-- Include `header.php`, `sidebar.php`, `footer.php` on every page
+- Every page must include `header.php`, `sidebar.php`, `footer.php`
 - Use Bootstrap 5 classes for layout/styling
 - Use short echo tags `<?= htmlspecialchars($var) ?>` for output
-- Keep business logic out of view files
+- Output-encode all user data — never echo raw input
 
 ---
 
@@ -129,15 +133,17 @@ Three engine classes handle tax calculations, all following the same pattern —
 
 Benchmark rates are stored in `bm_*` database tables — never hardcode rates in engine code.
 
+The standard workflow is: **Import** (Excel → DB via `import_*.php`) → **Configure** (benchmark rates + provisions) → **Calculate** (engine processes batch) → **Report** (results from `te_*_result` tables).
+
 ---
 
 ## Common Tasks
 
 **Adding a tax rule/benchmark rate**: Add data to the appropriate `bm_*` table via `db/schema.sql` or seed file. Add lookup method in the engine if custom logic is needed.
 
-**Adding a new page**: Create file in `pages/`, include header/sidebar/footer. Follow existing page patterns (see `index.php`).
+**Adding a new page**: Create file in `pages/`. Each page is a single PHP file that handles POST actions at the top, then renders HTML. Include `config.php`, `db.php`, and `header.php` at minimum.
 
-**Running calculations**: Import data via import page → configure provisions → run calculation → view results in reports.
+**Running calculations**: Import data via import page → configure provisions → run calculation via TE engine page → view results in reports.
 
 ---
 
@@ -145,5 +151,6 @@ Benchmark rates are stored in `bm_*` database tables — never hardcode rates in
 
 - Never commit `config.php` with real credentials
 - Validate and sanitize all user inputs
-- Use CSRF tokens on forms
+- Use prepared statements — no string interpolation in SQL
 - Output-encode user data in views with `htmlspecialchars()`
+- Temp/debug scripts (`analyze_*.php`, `check_*.php`, `debug_*.php`) are excluded via `.gitignore`

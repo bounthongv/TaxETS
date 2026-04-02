@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="wrapper d-flex">
-    <?php include __DIR__ . "/sidebar.php"; ?>
+    <?php include __DIR__ . "/sidebar_FIXED.php"; ?>
     <div id="content">
         <nav class="navbar navbar-expand-lg topbar">
             <div class="container-fluid">

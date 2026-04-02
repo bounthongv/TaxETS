@@ -11,10 +11,15 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="card shadow-sm mt-4">
     <div class="card-body py-5 text-center text-muted">
-        <i class="fas fa-tools fa-3x mb-3 text-secondary"></i>
-        <h4 class="text-dark">Module Under Construction</h4>
-        <p>This provision-based TE report is being prepared for upcoming integration.</p>
-        <a href="../index.php" class="btn btn-outline-primary mt-3"><i class="fas fa-arrow-left me-2"></i> Back to Dashboard</a>
+        <i class="fas fa-chart-bar fa-3x mb-3 text-primary opacity-50"></i>
+        <h4 class="text-dark">Report Available After TE Calculation</h4>
+        <p>This report will show Customs Duty TE breakdown by provision category once data is imported and calculations are run.</p>
+        <div class="mt-4">
+            <span class="badge bg-success me-1">Ready</span> Benchmark Rates &mdash;
+            <span class="badge bg-success me-1">Ready</span> Provisions Repository &mdash;
+            <span class="badge bg-warning text-dark me-1">Pending</span> Data Import &mdash;
+            <span class="badge bg-warning text-dark">Pending</span> TE Engine
+        </div>
     </div>
 </div>
 

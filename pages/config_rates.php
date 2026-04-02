@@ -29,6 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } elseif ($_POST['action'] == 'delete_sme') {
             $pdo->prepare("DELETE FROM bm_profit_sme WHERE id = ?")->execute([$_POST['id']]);
             $message = "Rule deleted.";
+        } elseif ($_POST['action'] == 'add_customs') {
+            $stmt = $pdo->prepare("INSERT INTO bm_customs_duty (ahtn_chapter, ahtn_description, start_year, end_year, rate_percentage) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$_POST['ahtn_chapter'], $_POST['ahtn_description'], $_POST['start_year'], $_POST['end_year'], $_POST['rate_percentage']]);
+            $message = "Customs chapter rate added.";
+        } elseif ($_POST['action'] == 'delete_customs') {
+            $pdo->prepare("DELETE FROM bm_customs_duty WHERE id = ?")->execute([$_POST['id']]);
+            $message = "Customs rule deleted.";
         }
     } catch (PDOException $e) {
         $message = "Error: " . $e->getMessage();
