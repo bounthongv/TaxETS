@@ -74,17 +74,20 @@ class TEVatEngine {
         ];
     }
 
-    private function lookupVatRate(string $filing_period): float {
-        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_vat WHERE start_date <= ? AND end_date >= ? ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$filing_period, $filing_period]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    private function lookupVatRate(?string $filing_period): float {
+        if (!empty($filing_period)) {
+            $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_vat WHERE start_date <= ? AND end_date >= ? ORDER BY id DESC LIMIT 1");
+            $stmt->execute([$filing_period, $filing_period]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
-            $fallback = $this->pdo->query("SELECT rate_percentage FROM bm_vat ORDER BY end_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-            return $fallback ? (float)$fallback['rate_percentage'] : 10.0;
+            if ($row) {
+                return (float)$row['rate_percentage'];
+            }
         }
 
-        return (float)$row['rate_percentage'];
+        // Fallback for null period or no rate found for specific date
+        $fallback = $this->pdo->query("SELECT rate_percentage FROM bm_vat ORDER BY end_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        return $fallback ? (float)$fallback['rate_percentage'] : 10.0;
     }
 
     // matchProvisions method removed: VAT mapping relies on the explicit 

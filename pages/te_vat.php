@@ -45,7 +45,7 @@ function getVatRateForDate($date, $rates) {
     return 0.10;
 }
 
-if ($batch_id && !$calc_result) {
+if ($batch_id) {
     try {
         $stmt = $pdo->prepare("SELECT * FROM import_vat_data WHERE batch_id = ?");
         $stmt->execute([$batch_id]);

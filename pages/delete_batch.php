@@ -12,10 +12,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($batch_id)) {
             $stmt->execute([$batch_id]);
             $redirect = "import_individual.php";
             break;
-        case "vat":
-            $stmt = $pdo->prepare("DELETE FROM import_vat_data WHERE batch_id = ?");
+        case "asy":
+            // Delete results first (child table)
+            $stmt = $pdo->prepare("DELETE tar FROM te_asycuda_result tar 
+                                 JOIN asycuda_imports ai ON tar.asycuda_id = ai.id 
+                                 WHERE ai.import_batch_id = ?");
             $stmt->execute([$batch_id]);
-            $redirect = "import_vat.php";
+            // Delete imports (parent table)
+            $stmt = $pdo->prepare("DELETE FROM asycuda_imports WHERE import_batch_id = ?");
+            $stmt->execute([$batch_id]);
+            $redirect = "import_asycuda.php";
             break;
         case "cit":
         default:

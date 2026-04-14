@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["batch_id"])) {
     }
 }
 
-if ($batch_id && !$calc_result) {
+if ($batch_id) {
     try {
         $stmt = $pdo->prepare("SELECT i.*, r.benchmark_calculated_tax, r.te_amount as engine_te, r.matched_provisions 
                                FROM import_pit_data i 
@@ -49,7 +49,7 @@ if ($batch_id && !$calc_result) {
 
 $batches = [];
 try {
-    $batches = $pdo->query("SELECT DISTINCT batch_id, tax_year, COUNT(*) as row_count FROM import_pit_data GROUP BY batch_id, tax_year ORDER BY batch_id DESC LIMIT 20")->fetchAll();
+    $batches = $pdo->query("SELECT batch_id, MIN(tax_year) as min_year, MAX(tax_year) as max_year, COUNT(*) as row_count FROM import_pit_data GROUP BY batch_id ORDER BY batch_id DESC LIMIT 20")->fetchAll();
 } catch (Exception $e) { }
 
 $db_rates = [
@@ -137,7 +137,7 @@ function getProvName($id) {
                     <option value="">-- Choose a batch --</option>
                     <?php foreach ($batches as $b): ?>
                     <option value="<?= htmlspecialchars($b["batch_id"]) ?>" <?= ($batch_id === $b["batch_id"]) ? "selected" : "" ?>>
-                        <?= htmlspecialchars($b["batch_id"]) ?> (Year: <?= $b["tax_year"] ?> | <?= $b["row_count"] ?> records)
+                        <?= htmlspecialchars($b["batch_id"]) ?> (Years: <?= $b["min_year"] == $b["max_year"] ? $b["min_year"] : $b["min_year"] . "-" . $b["max_year"] ?> | <?= $b["row_count"] ?> records)
                     </option>
                     <?php endforeach; ?>
                 </select>
@@ -159,6 +159,7 @@ function getProvName($id) {
             <thead>
                 <tr>
                     <th class="ps-4">Employee Name / PTIN</th>
+                    <th class="text-center">Filing Date</th>
                     <th class="text-end">Total Income</th>
                     <th class="text-end text-primary">Engine TE (DB)</th>
                     <th class="text-end text-info">Dummy Math TE</th>
@@ -205,6 +206,7 @@ foreach ($records as $idx => $r):
                             <div class="text-success small fw-bold mt-1">Matched: <?= htmlspecialchars($r["matched_provisions"]) ?></div>
                         <?php endif; ?>
                     </td>
+                    <td class="text-center text-muted small"><?= $r["filing_date"] ?: "N/A" ?></td>
                     <td class="text-end"><?= number_format($sum_income) ?></td>
                     <td class="text-end fw-bold text-primary"><?= number_format($engine_total) ?></td>
                     <td class="text-end fw-bold text-info"><?= number_format($dummy_math_total) ?></td>

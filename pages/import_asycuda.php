@@ -28,10 +28,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $regime = trim($sheet->getCell("G" . $row)->getValue()) . "-" . trim($sheet->getCell("H" . $row)->getValue());
                 
                 $parseDate = function($col) use ($sheet, $row) {
-                    $v = $sheet->getCell($col . $row)->getValue();
+                    $v = $sheet->getCell($col . $row)->getCalculatedValue();
                     if (!$v) return null;
                     if (is_numeric($v)) return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($v)->format("Y-m-d");
+                    // Try to parse string date if it's not numeric (e.g. DD/MM/YYYY)
+                    $ts = strtotime(str_replace('/', '-', $v));
+                    if ($ts) return date("Y-m-d", $ts);
                     return $v;
+                };
+
+                $cleanNum = function($col) use ($sheet, $row) {
+                    $val = $sheet->getCell($col . $row)->getCalculatedValue();
+                    if (is_numeric($val)) return (float)$val;
+                    return (float)str_replace(',', '', (string)$val);
                 };
 
                 $data = [
@@ -61,25 +70,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                     "list_no"           => $sheet->getCell("V" . $row)->getValue(),
                     "hs_code"           => $sheet->getCell("W" . $row)->getValue(),
                     "goods_description" => $sheet->getCell("X" . $row)->getValue(),
-                    "quantity"          => (float)$sheet->getCell("Y" . $row)->getValue(),
+                    "quantity"          => $cleanNum("Y"),
                     "unit"              => $sheet->getCell("Z" . $row)->getValue(),
-                    "declare_weight"    => (float)$sheet->getCell("AA" . $row)->getValue(),
-                    "actual_weight"     => (float)$sheet->getCell("AB" . $row)->getValue(),
-                    "invoice_usd"       => (float)$sheet->getCell("AC" . $row)->getValue(),
-                    "invoice_amount_lak" => (float)$sheet->getCell("AD" . $row)->getValue(),
-                    "paid_customs"      => (float)$sheet->getCell("AE" . $row)->getValue(),
-                    "paid_excise"       => (float)$sheet->getCell("AF" . $row)->getValue(),
-                    "paid_vat"          => (float)$sheet->getCell("AG" . $row)->getValue(),
-                    "paid_profit"       => (float)$sheet->getCell("AH" . $row)->getValue(),
-                    "paid_road_fund"    => (float)$sheet->getCell("AI" . $row)->getValue(),
-                    "paid_total"        => (float)$sheet->getCell("AJ" . $row)->getValue(),
+                    "declare_weight"    => $cleanNum("AA"),
+                    "actual_weight"     => $cleanNum("AB"),
+                    "invoice_usd"       => $cleanNum("AC"),
+                    "invoice_amount_lak" => $cleanNum("AD"),
+                    "paid_customs"      => $cleanNum("AE"),
+                    "paid_excise"       => $cleanNum("AF"),
+                    "paid_vat"          => $cleanNum("AG"),
+                    "paid_profit"       => $cleanNum("AH"),
+                    "paid_road_fund"    => $cleanNum("AI"),
+                    "paid_total"        => $cleanNum("AJ"),
                     "status_aj"         => $sheet->getCell("AK" . $row)->getValue(),
-                    "exemp_customs"     => (float)$sheet->getCell("AL" . $row)->getValue(),
-                    "exempt_excise"     => (float)$sheet->getCell("AM" . $row)->getValue(),
-                    "exempt_vat"        => (float)$sheet->getCell("AN" . $row)->getValue(),
-                    "te_customs_excel"  => (float)$sheet->getCell("AO" . $row)->getValue(),
-                    "te_excise_excel"   => (float)$sheet->getCell("AP" . $row)->getValue(),
-                    "te_vat_excel"      => (float)$sheet->getCell("AQ" . $row)->getValue(),
+                    "exemp_customs"     => $cleanNum("AL"),
+                    "exempt_excise"     => $cleanNum("AM"),
+                    "exempt_vat"        => $cleanNum("AN"),
+                    "te_customs_excel"  => $cleanNum("AO"),
+                    "te_excise_excel"   => $cleanNum("AP"),
+                    "te_vat_excel"      => $cleanNum("AQ"),
                     "provision_customs" => $sheet->getCell("AR" . $row)->getValue(),
                 ];
 
@@ -89,7 +98,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $stmt->execute(array_values($data));
                 $asy_id = $pdo->lastInsertId();
 
-                // Calculate TE: Benchmark - Paid
                 $customs_te = max(0, $data['exemp_customs'] - $data['paid_customs']);
                 $excise_te = max(0, $data['exempt_excise'] - $data['paid_excise']);
                 $vat_te = max(0, $data['exempt_vat'] - $data['paid_vat']);
@@ -104,7 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 }
             }
             $pdo->commit();
-            $message = "Import Successful! <strong>$imported records</strong> processed and TE calculated.";
+            $message = "Import Successful! <strong>$imported records</strong> imported. Please go to calculation pages to process tax expenditures.";
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             $message = "Error: " . $e->getMessage(); $msg_type = "danger";
@@ -112,10 +120,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
     }
 }
 
-$recent = $pdo->query("SELECT import_batch_id, DATE(import_date) as idate, COUNT(*) as `rows`, SUM(te.total_te) as total_te 
+$recent = $pdo->query("SELECT i.import_batch_id, DATE(i.import_date) as idate, COUNT(*) as `rows`, COALESCE(SUM(te.total_te), 0) as total_te 
                        FROM asycuda_imports i 
-                       JOIN te_asycuda_result te ON i.id = te.asycuda_id 
-                       GROUP BY import_batch_id ORDER BY i.id DESC LIMIT 10")->fetchAll();
+                       LEFT JOIN te_asycuda_result te ON i.id = te.asycuda_id 
+                       GROUP BY i.import_batch_id ORDER BY i.id DESC LIMIT 10")->fetchAll();
 
 require_once __DIR__ . "/../includes/header.php";
 ?>
@@ -128,40 +136,41 @@ require_once __DIR__ . "/../includes/header.php";
 </div>
 
 <?php if ($message): ?>
-<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show"><?= $message ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm"><?= $message ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
 <?php endif; ?>
 
 <div class="row">
     <div class="col-md-5">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white fw-bold"><i class="fas fa-upload me-2"></i> Upload ASYCUDA File</div>
+        <div class="card shadow-sm border-0" style="border-radius: 12px;">
+            <div class="card-header bg-primary text-white fw-bold py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <i class="fas fa-upload me-2"></i> Upload ASYCUDA File
+            </div>
             <div class="card-body">
                 <form method="POST" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Excel File (.xlsx)</label>
-                        <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
-                        <div class="form-text">File must match the standard ASYCUDA export format.</div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-muted small text-uppercase">Excel File (.xlsx)</label>
+                        <input type="file" name="excel_file" class="form-control form-control-lg border-0 bg-light" accept=".xlsx" required style="border-radius: 8px;">
+                        <div class="form-text mt-2"><i class="fas fa-info-circle me-1"></i> File must match the standard ASYCUDA export format.</div>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-file-import me-2"></i> Import and Calculate</button>
+                        <button type="submit" class="btn btn-primary btn-lg shadow-sm" style="border-radius: 8px;"><i class="fas fa-file-import me-2"></i> Import ASYCUDA Data</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card mt-3 shadow-sm">
-            <div class="card-header bg-secondary text-white fw-bold"><i class="fas fa-info-circle me-2"></i> Column Mapping Info</div>
+        <div class="card mt-4 shadow-sm border-0" style="border-radius: 12px;">
+            <div class="card-header bg-secondary text-white fw-bold py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <i class="fas fa-info-circle me-2"></i> Column Mapping Info
+            </div>
             <div class="card-body p-0">
                 <table class="table table-sm table-bordered mb-0 small">
-                    <thead class="table-light"><tr><th>Excel Column</th><th>System Meaning</th></tr></thead>
+                    <thead class="table-light"><tr><th class="ps-3">Excel Column</th><th>System Meaning</th></tr></thead>
                     <tbody>
-                        <tr><td>AE: Customs</td><td>Paid Customs Duty</td></tr>
-                        <tr><td>AF: Excise</td><td>Paid Excise Tax</td></tr>
-                        <tr><td>AG: VAT</td><td>Paid Import VAT</td></tr>
-                        <tr class="table-info"><td>AL: Exemp_Customs</td><td><strong>Benchmark Customs Duty</strong></td></tr>
-                        <tr class="table-info"><td>AM: Exempt_Excise</td><td><strong>Benchmark Excise Tax</strong></td></tr>
-                        <tr class="table-info"><td>AN: Exempt_VAT</td><td><strong>Benchmark Import VAT</strong></td></tr>
-                        <tr><td>G & H</td><td>Regime Code (e.g., 4000-480)</td></tr>
+                        <tr><td class="ps-3 font-monospace">M & O</td><td><strong>Transaction Dates</strong> (Used for Report Year)</td></tr>
+                        <tr><td class="ps-3 font-monospace">AE, AF, AG</td><td>Paid Customs, Excise, VAT</td></tr>
+                        <tr class="table-info"><td class="ps-3 font-monospace">AL, AM, AN</td><td><strong>Benchmark Taxes</strong></td></tr>
+                        <tr><td class="ps-3 font-monospace">G & H</td><td>Regime Code (e.g., 4000-480)</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -169,25 +178,40 @@ require_once __DIR__ . "/../includes/header.php";
     </div>
 
     <div class="col-md-7">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white fw-bold"><i class="fas fa-history me-2"></i> Recent ASYCUDA Imports</div>
+        <div class="card shadow-sm border-0" style="border-radius: 12px;">
+            <div class="card-header bg-white fw-bold py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <i class="fas fa-history me-2 text-primary"></i> Recent ASYCUDA Imports
+            </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0 small">
-                    <thead class="table-light"><tr><th>Batch ID</th><th>Date</th><th>Records</th><th>Total TE (LAK)</th><th>Action</th></tr></thead>
+                    <thead class="bg-light"><tr><th class="ps-4">Batch ID</th><th>Date</th><th>Records</th><th class="text-end">Total TE (LAK)</th><th class="text-center">Actions</th></tr></thead>
                     <tbody>
                         <?php foreach ($recent as $r): ?>
                         <tr>
-                            <td><small class="font-monospace"><?= htmlspecialchars($r['import_batch_id']) ?></small></td>
+                            <td class="ps-4"><small class="font-monospace text-muted"><?= htmlspecialchars($r['import_batch_id']) ?></small></td>
                             <td><?= $r['idate'] ?></td>
                             <td><?= number_format($r['rows']) ?></td>
-                            <td class="fw-bold text-danger"><?= number_format($r['total_te'], 2) ?></td>
-                            <td>
-                                <a href="view_asycuda.php?batch=<?= urlencode($r['import_batch_id']) ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i> View</a>
+                            <td class="fw-bold text-end">
+                                <?php if ($r['total_te'] > 0): ?>
+                                    <span class="text-danger"><?= number_format($r['total_te'], 2) ?></span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark opacity-75 small">Pending Calc</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a href="view_asycuda.php?batch=<?= urlencode($r['import_batch_id']) ?>" class="btn btn-sm btn-outline-primary" title="View Details"><i class="fas fa-eye"></i></a>
+                                    <form method="POST" action="delete_batch.php" onsubmit="return confirm('Truly delete this batch? All calculated TE results will also be removed.')" style="margin:0;">
+                                        <input type="hidden" name="type" value="asy">
+                                        <input type="hidden" name="batch_id" value="<?= htmlspecialchars($r['import_batch_id']) ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Batch"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
                         <?php if (empty($recent)): ?>
-                        <tr><td colspan="4" class="text-center p-4 text-muted">No ASYCUDA data imported yet.</td></tr>
+                        <tr><td colspan="5" class="text-center p-5 text-muted"><i class="fas fa-ghost fa-2x mb-3 opacity-25"></i><br>No ASYCUDA data imported yet.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

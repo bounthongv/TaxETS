@@ -17,7 +17,7 @@ $is_calculated = false;
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "calculate" && !empty($batch_id)) {
     try {
         $result = $engine->calculateBatch($batch_id);
-        $message = "Calculation complete! <strong>{$result['calculated']} records</strong> processed for Customs Duty. Data is now synced to reports.";
+        $message = "Calculation complete! <strong>{$result['calculated']} records</strong> processed for Import VAT. Data is now synced to reports.";
         $message_type = "success";
     } catch (Exception $e) {
         $message = "Calculation error: " . $e->getMessage();
@@ -51,8 +51,8 @@ if ($batch_id) {
             $total_te = 0;
             foreach ($records as $r) {
                 $total_invoice += $r['invoice_amount_lak'];
-                $total_paid += $r['paid_customs'];
-                $total_te += $r['exemp_customs'];
+                $total_paid += $r['paid_vat'];
+                $total_te += $r['exempt_vat'];
             }
             $summary = [
                 'total_invoice' => $total_invoice,
@@ -73,8 +73,8 @@ if ($batch_id) {
 
 <div class="row mb-3">
     <div class="col-12 text-start">
-        <h2><i class="fas fa-gavel me-2 text-primary"></i> Customs Duty Tax Expenditure</h2>
-        <p class="text-muted">Analyze Tax Expenditure for Customs Duty based on ASYCUDA import batches.</p>
+        <h2><i class="fas fa-file-invoice-dollar me-2 text-info"></i> Import VAT Tax Expenditure (ASYCUDA)</h2>
+        <p class="text-muted">Analyze Tax Expenditure for Import VAT based on ASYCUDA transactions.</p>
     </div>
 </div>
 
@@ -93,11 +93,11 @@ if ($batch_id) {
                 <h5 class="mb-0 small text-uppercase fw-bold text-muted"><i class="fas fa-list me-2"></i> Batch Selection</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="te_customs.php">
+                <form method="POST" action="te_asycuda_vat.php">
                     <input type="hidden" name="batch_id" value="<?= htmlspecialchars($batch_id) ?>">
                     <input type="hidden" name="action" value="calculate">
                     <div class="mb-3">
-                        <select name="batch_select" class="form-select form-select-lg border-0 bg-light" onchange="location.href='te_customs.php?batch=' + this.value">
+                        <select name="batch_select" class="form-select form-select-lg border-0 bg-light" onchange="location.href='te_asycuda_vat.php?batch=' + this.value">
                             <option value="">-- Choose Import Batch --</option>
                             <?php foreach ($batches as $b): ?>
                             <option value="<?= htmlspecialchars($b['batch_id'] ?? '') ?>" <?= $batch_id == ($b['batch_id'] ?? '') ? 'selected' : '' ?>>
@@ -107,7 +107,7 @@ if ($batch_id) {
                         </select>
                     </div>
                     <?php if ($batch_id): ?>
-                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3 shadow border-0" <?= $is_calculated ? 'disabled' : '' ?>>
+                    <button type="submit" class="btn btn-info text-white btn-lg w-100 mb-3 shadow border-0" <?= $is_calculated ? 'disabled' : '' ?>>
                         <i class="fas fa-sync-alt me-2 <?= $is_calculated ? '' : 'fa-spin' ?>"></i> 
                         <?= $is_calculated ? 'Calculation Complete' : 'Run TE Calculation' ?>
                     </button>
@@ -116,14 +116,14 @@ if ($batch_id) {
 
                 <?php if ($batch_id): ?>
                 <hr>
-                <div class="p-3 bg-light rounded border <?= $is_calculated ? 'border-success' : 'border-primary' ?> border-opacity-25 shadow-sm">
+                <div class="p-3 bg-light rounded border <?= $is_calculated ? 'border-success' : 'border-info' ?> border-opacity-25 shadow-sm">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted small">Current Batch:</span>
                         <span class="fw-bold small"><?= htmlspecialchars($batch_id) ?></span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-muted small">Status:</span>
-                        <span class="badge <?= $is_calculated ? 'bg-success' : 'bg-warning text-dark' ?> px-3">
+                        <span class="badge <?= $is_calculated ? 'bg-success' : 'bg-secondary' ?> px-3">
                             <i class="fas <?= $is_calculated ? 'fa-check-circle' : 'fa-clock' ?> me-1"></i>
                             <?= $is_calculated ? 'Calculated & Synced' : 'Awaiting Calculation' ?>
                         </span>
@@ -147,17 +147,17 @@ if ($batch_id) {
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 5px solid #198754 !important;">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 5px solid #0dcaf0 !important;">
                     <div class="card-body">
-                        <div class="text-muted small text-uppercase mb-1">Paid Customs Duty</div>
+                        <div class="text-muted small text-uppercase mb-1">Paid Import VAT</div>
                         <div class="h4 mb-0 fw-bold"><?= number_format($summary['total_paid'] ?? 0, 2) ?></div>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100 bg-primary text-white" style="border-radius: 12px;">
+                <div class="card border-0 shadow-sm h-100 bg-info text-white" style="border-radius: 12px;">
                     <div class="card-body">
-                        <div class="text-white-50 small text-uppercase mb-1">Customs Duty TE</div>
+                        <div class="text-white-50 small text-uppercase mb-1">Import VAT TE</div>
                         <div class="h4 mb-0 fw-bold"><?= number_format($summary['total_te'] ?? 0, 2) ?></div>
                     </div>
                 </div>
@@ -166,7 +166,7 @@ if ($batch_id) {
         <?php elseif ($batch_id): ?>
         <div class="card border-0 shadow-sm h-100 d-flex align-items-center justify-content-center py-5 text-muted" style="border-radius: 12px; background: #f8f9fa;">
             <div class="text-center">
-                <i class="fas fa-calculator fa-4x mb-3 text-primary opacity-25"></i>
+                <i class="fas fa-calculator fa-4x mb-3 text-info opacity-25"></i>
                 <h5 class="text-dark">TE Calculation Pending</h5>
                 <p>Select a batch and click <strong>"Run TE Calculation"</strong> to view results<br>and update the consolidated reports.</p>
             </div>
@@ -183,7 +183,7 @@ if ($batch_id) {
 <?php if ($batch_id && $is_calculated && !empty($records)): ?>
 <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-table me-2 text-primary"></i> Calculation Result: <?= htmlspecialchars($batch_id) ?></h5>
+        <h5 class="mb-0"><i class="fas fa-table me-2 text-info"></i> Calculation Result: <?= htmlspecialchars($batch_id) ?></h5>
         <button class="btn btn-outline-success btn-sm"><i class="fas fa-file-excel me-1"></i> Export Result</button>
     </div>
     <div class="card-body p-0">
@@ -197,8 +197,8 @@ if ($batch_id) {
                         <th>Importer Name</th>
                         <th>HS Code</th>
                         <th class="text-end">Invoice Amount</th>
-                        <th class="text-end">Paid Customs</th>
-                        <th class="text-end table-primary border-start">Customs Duty TE</th>
+                        <th class="text-end">Paid VAT</th>
+                        <th class="text-end table-info border-start">Import VAT TE</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -212,8 +212,8 @@ if ($batch_id) {
                         <td class="fw-bold"><?= htmlspecialchars($r['importer_name'] ?? '-') ?></td>
                         <td class="font-monospace"><?= htmlspecialchars($r['hs_code'] ?? '-') ?></td>
                         <td class="text-end"><?= number_format($r['invoice_amount_lak'], 2) ?></td>
-                        <td class="text-end text-success"><?= number_format($r['paid_customs'], 2) ?></td>
-                        <td class="text-end table-primary border-start fw-bold text-primary"><?= number_format($r['exemp_customs'], 2) ?></td>
+                        <td class="text-end text-info"><?= number_format($r['paid_vat'], 2) ?></td>
+                        <td class="text-end table-info border-start fw-bold text-dark"><?= number_format($r['exempt_vat'], 2) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -223,8 +223,8 @@ if ($batch_id) {
 </div>
 <?php endif; ?>
 
-<div class="mt-4 p-3 bg-white shadow-sm rounded text-muted small border-start border-primary border-5">
-    <i class="fas fa-info-circle me-2 text-primary"></i> <strong>Note on TE Calculation:</strong> For Customs Duty, Tax Expenditure currently reflects the <code>Exemp_Customs</code> amount recorded during the ASYCUDA import process. This represents the total customs duty exempted or waived under various legal incentives. In this phase, the engine verifies and persists these values for reporting.
+<div class="mt-4 p-3 bg-white shadow-sm rounded text-muted small border-start border-info border-5">
+    <i class="fas fa-info-circle me-2 text-info"></i> <strong>Note on TE Calculation:</strong> For Import VAT, Tax Expenditure currently reflects the <code>Exempt_VAT</code> amount recorded during ASYCUDA import. In this phase, the engine verifies and persists these values for reporting.
 </div>
 
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>

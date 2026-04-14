@@ -39,25 +39,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["vat_file"])) {
             $parseDate = function($val, $colName) use ($index) {
                 if (empty($val)) return null;
                 
-                // If it's a 4-digit year only
+                // If it's just a 4-digit year (e.g. 2023)
                 if (is_numeric($val) && strlen((string)$val) === 4) {
-                    return $val . "-01-01";
+                    return (int)$val . "-01-01";
                 }
 
-                if (is_numeric($val) && $val > 10000) { // Likely Excel date serial
+                // Handle Excel Date Serial Numbers
+                if (is_numeric($val) && (float)$val > 10000) { 
                     try {
                         return Date::excelToDateTimeObject($val)->format('Y-m-d');
                     } catch (Exception $e) {}
                 }
 
-                // Try common formats
-                $ts = strtotime((string)$val);
-                if ($ts) return date("Y-m-d", $ts);
-
-                // Handle YYYYMM or similar if needed
+                // Handle YYYY-MM or YYYY/MM (e.g. 2023-08)
                 if (preg_match('/^(\d{4})[-|\/](\d{1,2})$/', (string)$val, $matches)) {
                     return $matches[1] . "-" . str_pad($matches[2], 2, '0', STR_PAD_LEFT) . "-01";
                 }
+
+                // Handle MM-YYYY or MM/YYYY (e.g. 08-2023)
+                if (preg_match('/^(\d{1,2})[-|\/](\d{4})$/', (string)$val, $matches)) {
+                    return $matches[2] . "-" . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . "-01";
+                }
+
+                // Try PHP's native strtotime for everything else (e.g. "Aug 2023", "2023-08-15")
+                $ts = strtotime((string)$val);
+                if ($ts) return date("Y-m-d", $ts);
 
                 return null;
             };

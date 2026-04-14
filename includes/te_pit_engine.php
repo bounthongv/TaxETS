@@ -28,9 +28,10 @@ class TEPitEngine {
                 $existingRow = $existing->fetch();
 
                 if ($existingRow) {
-                    $updateStmt = $this->pdo->prepare("UPDATE te_individual_result SET individual_name = ?, employment_income = ?, other_income = ?, actual_tax_paid = ?, benchmark_calculated_tax = ?, te_amount = ?, matched_provisions = ? WHERE id = ?");
+                    $updateStmt = $this->pdo->prepare("UPDATE te_individual_result SET individual_name = ?, filing_date = ?, employment_income = ?, other_income = ?, actual_tax_paid = ?, benchmark_calculated_tax = ?, te_amount = ?, matched_provisions = ? WHERE id = ?");
                     $updateStmt->execute([
                         $row['employee_name'],
+                        $row['filing_date'],
                         $result['employment_income'],
                         $result['other_income'],
                         $result['actual_tax_paid'],
@@ -40,11 +41,12 @@ class TEPitEngine {
                         $existingRow['id']
                     ]);
                 } else {
-                    $insertStmt = $this->pdo->prepare("INSERT INTO te_individual_result (tax_year, tin, individual_name, employment_income, other_income, actual_tax_paid, benchmark_calculated_tax, te_amount, matched_provisions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $insertStmt = $this->pdo->prepare("INSERT INTO te_individual_result (tax_year, tin, individual_name, filing_date, employment_income, other_income, actual_tax_paid, benchmark_calculated_tax, te_amount, matched_provisions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $insertStmt->execute([
                         $row['tax_year'],
                         $row['ptin'],
                         $row['employee_name'],
+                        $row['filing_date'],
                         $result['employment_income'],
                         $result['other_income'],
                         $result['actual_tax_paid'],

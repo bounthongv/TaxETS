@@ -12,7 +12,7 @@ if (!$batch) {
 
 $stmt = $pdo->prepare("SELECT i.*, te.customs_te, te.excise_te, te.vat_te, te.total_te 
                        FROM asycuda_imports i 
-                       JOIN te_asycuda_result te ON i.id = te.asycuda_id 
+                       LEFT JOIN te_asycuda_result te ON i.id = te.asycuda_id 
                        WHERE i.import_batch_id = ?");
 $stmt->execute([$batch]);
 $rows = $stmt->fetchAll();
@@ -42,7 +42,9 @@ $rows = $stmt->fetchAll();
                         <th>Doc No</th>
                         <th>Doc Date</th>
                         <th>Assess No</th>
+                        <th>Assess Date</th>
                         <th>Receipt No</th>
+                        <th>Receipt Date</th>
                         <th class="name-col">Importer Name</th>
                         <th class="name-col">Declarant Name</th>
                         <th>HS Code</th>
@@ -79,7 +81,9 @@ $rows = $stmt->fetchAll();
                         <td class="text-nowrap"><?= htmlspecialchars($r['doc_number']) ?></td>
                         <td class="text-nowrap"><?= htmlspecialchars($r['doc_date']) ?></td>
                         <td class="text-nowrap"><?= htmlspecialchars($r['assess_number']) ?></td>
+                        <td class="text-nowrap"><?= htmlspecialchars($r['assess_date']) ?></td>
                         <td class="text-nowrap"><?= htmlspecialchars($r['receipt_no']) ?></td>
+                        <td class="text-nowrap"><?= htmlspecialchars($r['receipt_date']) ?></td>
                         
                         <td class="name-cell"><?= htmlspecialchars($r['importer_name']) ?></td>
                         <td class="name-cell"><?= htmlspecialchars($r['declarant_name']) ?></td>

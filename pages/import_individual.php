@@ -39,11 +39,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                         return is_numeric($v) ? (float)$v : 0.00;
                     };
 
-                    $excel_date = $sheet->getCell("A" . $row)->getCalculatedValue();
+                    $excel_date_val = $sheet->getCell("A" . $row)->getCalculatedValue();
                     $excel_year = $tax_year; // Default to form
-                    if (is_numeric($excel_date)) {
-                        $d = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($excel_date);
+                    $filing_date = null;
+                    if (is_numeric($excel_date_val)) {
+                        $d = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($excel_date_val);
                         $excel_year = (int)$d->format("Y");
+                        $filing_date = $d->format("Y-m-d");
                     }
 
                     // For Social Security, if cell AB has any value, consider it True
@@ -54,6 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                         "batch_id"       => $batch_id,
                         "tax_year"       => $excel_year > 0 ? $excel_year : $tax_year,
                         "employee_name"  => $sheet->getCell("B" . $row)->getCalculatedValue(),
+                        "filing_date"    => $filing_date,
                         "ptin"           => $ptin,
 
                         // Raw Amounts
