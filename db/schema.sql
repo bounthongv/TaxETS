@@ -90,3 +90,33 @@ CREATE TABLE te_profit_result (
     profit_tax_te DECIMAL(20, 2) DEFAULT 0,
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
 );
+
+-- 8. USER ROLES
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL UNIQUE,
+    role_description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. SYSTEM USERS
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    position VARCHAR(100),
+    role_id INT DEFAULT NULL,
+    photo VARCHAR(255) DEFAULT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL
+);
+
+-- Insert default admin user (password: admin123)
+INSERT INTO roles (role_name, role_description) VALUES ('SUPER ADMIN', 'Full system access');
+INSERT INTO roles (role_name, role_description) VALUES ('ADMIN', 'Administrative access');
+INSERT INTO roles (role_name, role_description) VALUES ('USER', 'Basic user access');
+INSERT INTO users (name, email, password, position, role_id, active) 
+VALUES ('Administrator', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Admin', 1, 1);

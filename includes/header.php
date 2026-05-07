@@ -1,5 +1,6 @@
 <?php require_once __DIR__ . "/../config.php"; ?>
 <?php require_once __DIR__ . "/db.php"; ?>
+<?php require_once __DIR__ . "/auth.php"; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,8 +20,8 @@
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-outline-success"><i class="fas fa-align-left"></i></button>
                 <div class="ms-auto d-flex align-items-center">
-                    <span class="me-3"><i class="fas fa-user-circle fa-lg text-secondary"></i> Admin</span>
-                    <a href="#" class="btn btn-sm btn-outline-danger">Logout</a>
+                    <span class="me-3"><i class="fas fa-user-circle fa-lg text-secondary"></i> <?= htmlspecialchars(getCurrentUserName()) ?></span>
+                    <a href="<?= BASE_URL ?>/logout.php" class="btn btn-sm btn-outline-danger">Logout</a>
                 </div>
             </div>
         </nav>
