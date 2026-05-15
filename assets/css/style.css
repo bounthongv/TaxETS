@@ -77,6 +77,9 @@ body {
     display: block;
     color: var(--sidebar-text);
     text-decoration: none;
+    white-space: normal;
+    line-height: 1.4;
+    word-wrap: break-word;
 }
 
 #sidebar ul li a:hover, #sidebar ul li.active > a {
@@ -88,6 +91,7 @@ body {
     font-size: 0.9em !important;
     padding-left: 40px !important;
     background: #1a3228;
+    white-space: normal;
 }
 
 /* Content Area */

@@ -36,6 +36,9 @@
         <li class="<?= $cur == 'dictionary_province.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_province.php">Province</a></li>
         <li class="<?= $cur == 'dictionary_district.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_district.php">District</a></li>
         <li class="<?= $cur == 'dictionary_zone.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_zone.php">Investment Zone</a></li>
+        <li class="<?= $cur == 'dictionary_village.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_village.php">Village</a></li>
+        <li class="<?= $cur == 'dictionary_enterprise_type.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_enterprise_type.php">Enterprise Type</a></li>
+        <li class="<?= $cur == 'dictionary_moic_categories.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_moic_categories.php">MOIC Categories</a></li>
       </ul>
     </li>
 
@@ -51,13 +54,21 @@
         <li class="<?= $cur == 'benchmark_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_vat.php">Value-Added Tax</a></li>
         <li class="<?= $cur == 'benchmark_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_customs.php">Customs Duty</a></li>
         <li class="<?= $cur == 'benchmark_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_excise.php">Excise Tax Services</a></li>
-        <li class="<?= $cur == 'benchmark_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_nontax.php">Non-Tax</a></li>
+        <li class="<?= $cur == 'benchmark_nontax.php' ? 'active' : '' ?>">
+          <a href="#nonTaxBenchSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'benchmark_') !== false && strpos($cur, 'land') !== false ? 'true' : 'false' ?>">
+            <i class="fas fa-money-bill-wave me-2"></i> Non-Tax
+          </a>
+          <ul class="collapse list-unstyled <?= strpos($cur, 'benchmark_land') !== false || strpos($cur, 'provision_land') !== false ? 'show' : '' ?>" id="nonTaxBenchSub">
+            <li class="<?= $cur == 'benchmark_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_land_concession.php">Land Concession</a></li>
+            <li class="<?= $cur == 'benchmark_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_nontax.php">Natural Resource</a></li>
+          </ul>
+        </li>
         <li class="<?= $cur == 'benchmark_art9.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_art9.php">Activities in Art 9 of IPL</a></li>
       </ul>
     </li>
 
     <!-- Repository -->
-    <?php $is_repo = (strpos($cur, 'repo_') !== false || $cur == 'config_provisions.php'); ?>
+    <?php $is_repo = ((strpos($cur, 'repo_') !== false && strpos($cur, 'molsw') === false && strpos($cur, 'lse') === false) || $cur == 'config_provisions.php'); ?>
     <li class="<?= $is_repo ? 'active' : '' ?>">
       <a href="#repositorySub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_repo ? 'true' : 'false' ?>">
         <i class="fas fa-archive me-2"></i> Repository
@@ -68,37 +79,87 @@
         <li class="<?= $cur == 'repo_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_vat.php">Value-Added Tax</a></li>
         <li class="<?= $cur == 'repo_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_customs.php">Customs Duty</a></li>
         <li class="<?= $cur == 'repo_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_excise.php">Excise Tax Services</a></li>
-        <li class="<?= $cur == 'repo_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_nontax.php">Non-Tax</a></li>
+        <li class="<?= $cur == 'repo_nontax.php' ? 'active' : '' ?>">
+          <a href="#nonTaxRepoSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'provision_') !== false && strpos($cur, 'land') !== false ? 'true' : 'false' ?>">
+            <i class="fas fa-archive me-2"></i> Non-Tax
+          </a>
+          <ul class="collapse list-unstyled <?= strpos($cur, 'provision_land') !== false ? 'show' : '' ?>" id="nonTaxRepoSub">
+            <li class="<?= $cur == 'provision_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/provision_land_concession.php">Land Concession</a></li>
+            <li class="<?= $cur == 'repo_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_nontax.php">Natural Resource</a></li>
+          </ul>
+        </li>
       </ul>
     </li>
 
     <hr class="mx-3 opacity-25">
 
-    <!-- Get Tax Data from Excel -->
-    <li>
-      <a href="#importSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'import_') !== false || strpos($cur, 'asycuda_') !== false ? 'true' : 'false' ?>">
-        <i class="fas fa-file-excel me-2"></i> Get Tax Data from Excel
+    <!-- Get Tax Data by Import from Excel -->
+    <?php 
+        $is_molsw = (strpos($cur, 'molsw') !== false);
+        $is_lse = (strpos($cur, 'lse') !== false);
+        $is_sezo = (strpos($cur, 'sezo') !== false);
+        $is_moic = (strpos($cur, 'moic') !== false);
+        $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic);
+        $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req) || (strpos($cur, 'asycuda_') !== false);
+        $is_import_excel = ($is_data_req || $is_import_te);
+    ?>
+    <li class="<?= $is_import_excel ? 'active' : '' ?>">
+      <a href="#importExcelSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_import_excel ? 'true' : 'false' ?>">
+        <i class="fas fa-file-excel me-2"></i> Get Tax Data by Import from Excel
       </a>
-      <ul class="collapse list-unstyled <?= strpos($cur, 'import_') !== false || strpos($cur, 'asycuda_') !== false ? 'show' : '' ?>" id="importSub">
-        <?php $is_asycuda = (strpos($cur, 'asycuda_') !== false || $cur == 'import_asycuda.php'); ?>
-        <li class="<?= $is_asycuda ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/asycuda_index.php" class="dropdown-toggle" aria-expanded="<?= $is_asycuda ? 'true' : 'false' ?>">Data from ASYCUDA</a>
-            <ul class="collapse list-unstyled ps-3 <?= $is_asycuda ? 'show' : '' ?>" id="asySub">
-                <li class="<?= $cur == 'import_asycuda.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_asycuda.php">Import New Data</a></li>
-                <li class="<?= $cur == 'asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_customs.php">Custom Duty</a></li>
-                <li class="<?= $cur == 'asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_excise.php">Excise Tax</a></li>
-                <li class="<?= $cur == 'asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_vat.php">Import VAT</a></li>
-            </ul>
+      <ul class="collapse list-unstyled <?= $is_import_excel ? 'show' : '' ?>" id="importExcelSub">
+        
+        <!-- Data Requirement to Identify the type of Repository -->
+        <li class="<?= $is_data_req ? 'active' : '' ?>">
+          <a href="#importDataReqSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_data_req ? 'true' : 'false' ?>">
+            <i class="fas fa-database me-2"></i> Data Requirement to Identify the type of Repository
+          </a>
+          <ul class="collapse list-unstyled ps-3 <?= $is_data_req ? 'show' : '' ?>" id="importDataReqSub">
+            <!-- Import Data from TaxRIS and Others -->
+            <li>
+              <a href="#importTaxrisSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= ($is_molsw || $is_lse || $is_moic) ? 'true' : 'false' ?>">
+                <i class="fas fa-file-import me-2"></i> Import Data from TaxRIS and Others
+              </a>
+              <ul class="collapse list-unstyled ps-3 <?= ($is_molsw || $is_lse || $is_moic) ? 'show' : '' ?>" id="importTaxrisSub">
+                <li><a href="#"><i class="fas fa-plus me-2"></i>Import New Data</a></li>
+                <li class="<?= $is_moic ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_moic.php"><i class="fas fa-building me-2"></i>Get data from MOIC</a></li>
+                <li><a href="#"><i class="fas fa-file-invoice-dollar me-2"></i>Get data from TaxRIS</a></li>
+                <li><a href="#"><i class="fas fa-chart-line me-2"></i>Get data from MPI</a></li>
+                <li class="<?= $is_molsw ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_molsw.php"><i class="fas fa-users me-2"></i>Get data from MOLSW</a></li>
+                <li class="<?= $is_lse ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_lse.php"><i class="fas fa-chart-line me-2"></i>Get data from Lao Stock Exchange</a></li>
+              </ul>
+            </li>
+            <li class="<?= $is_sezo ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_sezo.php"><i class="fas fa-industry me-2"></i>Get data from SEZO</a></li>
+          </ul>
         </li>
-        <li class="<?= $cur == 'import_cit.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_cit.php">Profit Tax</a></li>
-        <li class="<?= $cur == 'import_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a></li>
-        <li class="<?= $cur == 'import_salary.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a></li>
-        <li class="<?= $cur == 'import_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a></li>
-        <li class="<?= $cur == 'import_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a></li>
-        <li class="<?= $cur == 'import_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a></li>
-        <li class="<?= $cur == 'import_land.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land.php">Non-Tax: Land concession</a></li>
-        <li class="<?= $cur == 'import_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
-        <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
+
+        <!-- Data Requirement to estimate TE -->
+        <li class="<?= $is_import_te ? 'active' : '' ?>">
+          <a href="#importTESub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_import_te ? 'true' : 'false' ?>">
+            <i class="fas fa-calculator me-2"></i> Data Requirement to estimate TE
+          </a>
+          <ul class="collapse list-unstyled ps-3 <?= $is_import_te ? 'show' : '' ?>" id="importTESub">
+            <?php $is_asycuda = (strpos($cur, 'asycuda_') !== false || $cur == 'import_asycuda.php'); ?>
+            <li class="<?= $is_asycuda ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/asycuda_index.php" class="dropdown-toggle" aria-expanded="<?= $is_asycuda ? 'true' : 'false' ?>">Data from ASYCUDA</a>
+                <ul class="collapse list-unstyled ps-3 <?= $is_asycuda ? 'show' : '' ?>" id="asySub">
+                    <li class="<?= $cur == 'import_asycuda.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_asycuda.php">Import New Data</a></li>
+                    <li class="<?= $cur == 'asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_customs.php">Custom Duty</a></li>
+                    <li class="<?= $cur == 'asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_excise.php">Excise Tax</a></li>
+                    <li class="<?= $cur == 'asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_vat.php">Import VAT</a></li>
+                </ul>
+            </li>
+            <li class="<?= $cur == 'import_cit.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_cit.php">Profit Tax</a></li>
+            <li class="<?= $cur == 'import_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a></li>
+            <li class="<?= $cur == 'import_salary.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a></li>
+            <li class="<?= $cur == 'import_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a></li>
+            <li class="<?= $cur == 'import_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a></li>
+            <li class="<?= $cur == 'import_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a></li>
+            <li class="<?= $cur == 'import_land.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land.php">Non-Tax: Land concession</a></li>
+            <li class="<?= $cur == 'import_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
+            <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
+          </ul>
+        </li>
       </ul>
     </li>
 
@@ -115,6 +176,15 @@
         <li class="<?= $cur == 'te_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_customs.php">Custom Tax Expenditure</a></li>
         <li class="<?= $cur == 'te_asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_excise.php">Excise Tax TE</a></li>
         <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT TE</a></li>
+        <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_land' ? 'active' : '' ?>">
+          <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'calculate_land') !== false ? 'true' : 'false' ?>">
+            <i class="fas fa-calculator me-2"></i> Non-Tax
+          </a>
+          <ul class="collapse list-unstyled <?= strpos($cur, 'calculate_land') !== false ? 'show' : '' ?>" id="nonTaxCalcSub">
+            <li class="<?= $cur == 'calculate_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculate_land_concession.php">Land Concession</a></li>
+            <li class="<?= $cur == 'te_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_nontax.php">Natural Resource</a></li>
+          </ul>
+        </li>
       </ul>
     </li>
 

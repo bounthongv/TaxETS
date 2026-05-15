@@ -117,43 +117,74 @@
       </ul>
     </li>
 
-    <hr class="mx-3 opacity-25">
+<hr class="mx-3 opacity-25">
 
-    <!-- Get Tax Data from Excel -->
+    <!-- Get Tax Data by Import from Excel -->
     <li>
-      <a href="#importSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'import_') !== false ? 'true' : 'false' ?>">
-        <i class="fas fa-file-excel me-2"></i> Get Tax Data from Excel
+      <a href="#importExcelSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'import_') !== false ? 'true' : 'false' ?>">
+        <i class="fas fa-file-excel me-2"></i> Get Tax Data by Import from Excel
       </a>
-      <ul class="collapse list-unstyled <?= strpos($cur, 'import_') !== false ? 'show' : '' ?>" id="importSub">
-        <li class="<?= $cur == 'import_asycuda.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_asycuda.php">Data from ASYCUDA</a>
+      <ul class="collapse list-unstyled <?= strpos($cur, 'import_') !== false ? 'show' : '' ?>" id="importExcelSub">
+        <!-- Data Requirements to identify the type of Benchmark/Repository -->
+        <li>
+          <a href="#importDataReqSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'import_') !== false && !in_array($cur, ['import_asycuda.php', 'import_cit.php', 'import_individual.php', 'import_salary.php', 'import_vat.php', 'import_sez_dev.php', 'import_sez_inv.php', 'import_land.php', 'import_resource.php', 'import_royalty.php']) ? 'true' : 'false' ?>">
+            <i class="fas fa-database me-2"></i> Data Requirements to identify the type of Benchmark/Repository
+          </a>
+          <ul class="collapse list-unstyled <?= strpos($cur, 'import_') !== false && !in_array($cur, ['import_asycuda.php', 'import_cit.php', 'import_individual.php', 'import_salary.php', 'import_vat.php', 'import_sez_dev.php', 'import_sez_inv.php', 'import_land.php', 'import_resource.php', 'import_royalty.php']) ? 'show' : '' ?>" id="importDataReqSub">
+            <!-- Import Data from TaxRIS and Others -->
+            <li>
+              <a href="#importTaxrisSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= false ?>">
+                <i class="fas fa-file-import me-2"></i> Import Data from TaxRIS and Others
+              </a>
+              <ul class="collapse list-unstyled" id="importTaxrisSub">
+                <li><a href="#"><i class="fas fa-plus me-2"></i>Import New Data</a></li>
+                <li><a href="#"><i class="fas fa-building me-2"></i>Get data from MOIC</a></li>
+                <li><a href="#"><i class="fas fa-file-invoice-dollar me-2"></i>Get data from TaxRIS</a></li>
+                <li><a href="#"><i class="fas fa-chart-line me-2"></i>Get data from MPI</a></li>
+                <li><a href="#"><i class="fas fa-users me-2"></i>Get data from MOLSW</a></li>
+                <li><a href="#"><i class="fas fa-chart-line me-2"></i>Get data from Lao Stock Exchange</a></li>
+              </ul>
+            </li>
+            <li><a href="#"><i class="fas fa-industry me-2"></i>Get data from SEZO</a></li>
+          </ul>
         </li>
-        <li class="<?= $cur == 'import_cit.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_cit.php">Profit Tax</a>
-        </li>
-        <li class="<?= $cur == 'import_individual.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a>
-        </li>
-        <li class="<?= $cur == 'import_salary.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a>
-        </li>
-        <li class="<?= $cur == 'import_vat.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a>
-        </li>
-        <li class="<?= $cur == 'import_sez_dev.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a>
-        </li>
-        <li class="<?= $cur == 'import_sez_inv.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a>
-        </li>
-        <li class="<?= $cur == 'import_land.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_land.php">Non-Tax: Land concession</a>
-        </li>
-        <li class="<?= $cur == 'import_resource.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a>
-        </li>
-        <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>">
-            <a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a>
+        <!-- Data Requirements to estimate TE -->
+        <li>
+          <a href="#importTESub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= in_array($cur, ['import_asycuda.php', 'import_cit.php', 'import_individual.php', 'import_salary.php', 'import_vat.php', 'import_sez_dev.php', 'import_sez_inv.php', 'import_land.php', 'import_resource.php', 'import_royalty.php']) ? 'true' : 'false' ?>">
+            <i class="fas fa-calculator me-2"></i> Data Requirements to estimate TE
+          </a>
+          <ul class="collapse list-unstyled <?= in_array($cur, ['import_asycuda.php', 'import_cit.php', 'import_individual.php', 'import_salary.php', 'import_vat.php', 'import_sez_dev.php', 'import_sez_inv.php', 'import_land.php', 'import_resource.php', 'import_royalty.php']) ? 'show' : '' ?>" id="importTESub">
+            <li class="<?= $cur == 'import_asycuda.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_asycuda.php">Data from ASYCUDA</a>
+            </li>
+            <li class="<?= $cur == 'import_cit.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_cit.php">Profit Tax</a>
+            </li>
+            <li class="<?= $cur == 'import_individual.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a>
+            </li>
+            <li class="<?= $cur == 'import_salary.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a>
+            </li>
+            <li class="<?= $cur == 'import_vat.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a>
+            </li>
+            <li class="<?= $cur == 'import_sez_dev.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a>
+            </li>
+            <li class="<?= $cur == 'import_sez_inv.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a>
+            </li>
+            <li class="<?= $cur == 'import_land.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_land.php">Non-Tax: Land concession</a>
+            </li>
+            <li class="<?= $cur == 'import_resource.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a>
+            </li>
+            <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a>
+            </li>
+          </ul>
         </li>
       </ul>
     </li>

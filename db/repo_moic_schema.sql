@@ -1,0 +1,42 @@
+USE tax_ets;
+
+CREATE TABLE IF NOT EXISTS repo_moic (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    import_batch_id VARCHAR(50),
+    tin VARCHAR(50) NOT NULL,
+    company_name VARCHAR(255),
+    province_id INT,
+    district_id INT,
+    village VARCHAR(255),
+    address TEXT,
+    enterprise_type_id INT,
+    license_date DATE,
+    first_revenue_date DATE,
+    incentive_grant_date DATE,
+    incentive_tax_policy TEXT,
+    investor_fund_rate VARCHAR(255),
+    is_active TINYINT(1) DEFAULT 1,
+    business_size_staff INT DEFAULT 0,
+    registered_capital DECIMAL(20, 2) DEFAULT 0,
+    vat_system_status INT,
+    -- Scopes (1=Yes, 2=No)
+    hr_dev_scope TINYINT(1),
+    innovative_tech_scope TINYINT(1),
+    art9_p2_scope TINYINT(1),
+    art9_p3_scope TINYINT(1),
+    art9_p4_scope TINYINT(1),
+    art9_p5_scope TINYINT(1),
+    art9_p6_scope TINYINT(1),
+    prod_industry_scope TINYINT(1),
+    tourism_scope TINYINT(1),
+    public_health_scope TINYINT(1),
+    edu_scope TINYINT(1),
+    sport_scope TINYINT(1),
+    real_estate_scope TINYINT(1),
+    micro_ent_scope TINYINT(1),
+    agri_handicraft_scope TINYINT(1),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (tin)
+);
