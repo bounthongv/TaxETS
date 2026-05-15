@@ -38,6 +38,7 @@
         <li class="<?= $cur == 'dictionary_zone.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_zone.php">Investment Zone</a></li>
         <li class="<?= $cur == 'dictionary_village.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_village.php">Village</a></li>
         <li class="<?= $cur == 'dictionary_enterprise_type.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_enterprise_type.php">Enterprise Type</a></li>
+        <li class="<?= $cur == 'dictionary_sector.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_sector.php">Business Sector</a></li>
         <li class="<?= $cur == 'dictionary_moic_categories.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_moic_categories.php">MOIC Categories</a></li>
       </ul>
     </li>
@@ -99,7 +100,8 @@
         $is_lse = (strpos($cur, 'lse') !== false);
         $is_sezo = (strpos($cur, 'sezo') !== false);
         $is_moic = (strpos($cur, 'moic') !== false);
-        $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic);
+        $is_mpi = (strpos($cur, 'mpi') !== false);
+        $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi);
         $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req) || (strpos($cur, 'asycuda_') !== false);
         $is_import_excel = ($is_data_req || $is_import_te);
     ?>
@@ -117,14 +119,14 @@
           <ul class="collapse list-unstyled ps-3 <?= $is_data_req ? 'show' : '' ?>" id="importDataReqSub">
             <!-- Import Data from TaxRIS and Others -->
             <li>
-              <a href="#importTaxrisSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= ($is_molsw || $is_lse || $is_moic) ? 'true' : 'false' ?>">
+              <a href="#importTaxrisSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= ($is_molsw || $is_lse || $is_moic || $is_mpi) ? 'true' : 'false' ?>">
                 <i class="fas fa-file-import me-2"></i> Import Data from TaxRIS and Others
               </a>
-              <ul class="collapse list-unstyled ps-3 <?= ($is_molsw || $is_lse || $is_moic) ? 'show' : '' ?>" id="importTaxrisSub">
+              <ul class="collapse list-unstyled ps-3 <?= ($is_molsw || $is_lse || $is_moic || $is_mpi) ? 'show' : '' ?>" id="importTaxrisSub">
                 <li><a href="#"><i class="fas fa-plus me-2"></i>Import New Data</a></li>
                 <li class="<?= $is_moic ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_moic.php"><i class="fas fa-building me-2"></i>Get data from MOIC</a></li>
                 <li><a href="#"><i class="fas fa-file-invoice-dollar me-2"></i>Get data from TaxRIS</a></li>
-                <li><a href="#"><i class="fas fa-chart-line me-2"></i>Get data from MPI</a></li>
+                <li class="<?= $is_mpi ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_mpi.php"><i class="fas fa-chart-line me-2"></i>Get data from MPI</a></li>
                 <li class="<?= $is_molsw ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_molsw.php"><i class="fas fa-users me-2"></i>Get data from MOLSW</a></li>
                 <li class="<?= $is_lse ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_lse.php"><i class="fas fa-chart-line me-2"></i>Get data from Lao Stock Exchange</a></li>
               </ul>

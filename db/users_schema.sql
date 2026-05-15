@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS districts (
     district_code VARCHAR(10) NOT NULL UNIQUE,
     district_name VARCHAR(100) NOT NULL,
     province_id INT,
+    zone TINYINT COMMENT '1=SEZ, 2=Promotion Zone',
     active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (province_id) REFERENCES provinces(id) ON DELETE SET NULL
