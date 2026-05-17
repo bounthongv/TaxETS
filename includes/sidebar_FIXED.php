@@ -27,7 +27,7 @@
     </li>
 
     <!-- Data Dictionary -->
-    <?php $is_dict = (strpos($cur, 'dictionary_') !== false); ?>
+    <?php $is_dict = (strpos($cur, 'dictionary_') !== false || $cur == 'repo_gdp.php'); ?>
     <li class="<?= $is_dict ? 'active' : '' ?>">
       <a href="#dictionarySub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_dict ? 'true' : 'false' ?>">
         <i class="fas fa-book me-2"></i> Data Dictionary
@@ -40,6 +40,7 @@
         <li class="<?= $cur == 'dictionary_enterprise_type.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_enterprise_type.php">Enterprise Type</a></li>
         <li class="<?= $cur == 'dictionary_sector.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_sector.php">Business Sector</a></li>
         <li class="<?= $cur == 'dictionary_moic_categories.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_moic_categories.php">MOIC Categories</a></li>
+        <li class="<?= $cur == 'repo_gdp.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_gdp.php">GDP, Revenue</a></li>
       </ul>
     </li>
 
@@ -55,6 +56,9 @@
         <li class="<?= $cur == 'benchmark_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_vat.php">Value-Added Tax</a></li>
         <li class="<?= $cur == 'benchmark_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_customs.php">Customs Duty</a></li>
         <li class="<?= $cur == 'benchmark_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_excise.php">Excise Tax Services</a></li>
+        <li class="<?= $cur == 'benchmark_msme.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_msme.php">MSME Definition</a></li>
+        <li class="<?= $cur == 'benchmark_customs_regime.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_customs_regime.php">Customs Regime Codes</a></li>
+        <li class="<?= $cur == 'benchmark_payment_condition.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_payment_condition.php">Payment Condition Code</a></li>
         <li class="<?= $cur == 'benchmark_nontax.php' ? 'active' : '' ?>">
           <a href="#nonTaxBenchSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'benchmark_') !== false && strpos($cur, 'land') !== false ? 'true' : 'false' ?>">
             <i class="fas fa-money-bill-wave me-2"></i> Non-Tax
@@ -101,7 +105,8 @@
         $is_sezo = (strpos($cur, 'sezo') !== false);
         $is_moic = (strpos($cur, 'moic') !== false);
         $is_mpi = (strpos($cur, 'mpi') !== false);
-        $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi);
+        $is_taxris = (strpos($cur, 'taxris') !== false);
+        $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi || $is_taxris);
         $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req) || (strpos($cur, 'asycuda_') !== false);
         $is_import_excel = ($is_data_req || $is_import_te);
     ?>
@@ -119,13 +124,13 @@
           <ul class="collapse list-unstyled ps-3 <?= $is_data_req ? 'show' : '' ?>" id="importDataReqSub">
             <!-- Import Data from TaxRIS and Others -->
             <li>
-              <a href="#importTaxrisSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= ($is_molsw || $is_lse || $is_moic || $is_mpi) ? 'true' : 'false' ?>">
+              <a href="#importTaxrisSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= ($is_molsw || $is_lse || $is_moic || $is_mpi || $is_taxris) ? 'true' : 'false' ?>">
                 <i class="fas fa-file-import me-2"></i> Import Data from TaxRIS and Others
               </a>
-              <ul class="collapse list-unstyled ps-3 <?= ($is_molsw || $is_lse || $is_moic || $is_mpi) ? 'show' : '' ?>" id="importTaxrisSub">
+              <ul class="collapse list-unstyled ps-3 <?= ($is_molsw || $is_lse || $is_moic || $is_mpi || $is_taxris) ? 'show' : '' ?>" id="importTaxrisSub">
                 <li><a href="#"><i class="fas fa-plus me-2"></i>Import New Data</a></li>
                 <li class="<?= $is_moic ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_moic.php"><i class="fas fa-building me-2"></i>Get data from MOIC</a></li>
-                <li><a href="#"><i class="fas fa-file-invoice-dollar me-2"></i>Get data from TaxRIS</a></li>
+                <li class="<?= $is_taxris ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_taxris.php"><i class="fas fa-file-invoice-dollar me-2"></i>Get data from TaxRIS</a></li>
                 <li class="<?= $is_mpi ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_mpi.php"><i class="fas fa-chart-line me-2"></i>Get data from MPI</a></li>
                 <li class="<?= $is_molsw ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_molsw.php"><i class="fas fa-users me-2"></i>Get data from MOLSW</a></li>
                 <li class="<?= $is_lse ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_lse.php"><i class="fas fa-chart-line me-2"></i>Get data from Lao Stock Exchange</a></li>

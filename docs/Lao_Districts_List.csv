@@ -1,0 +1,150 @@
+﻿Province_Code,District_Code,District_Name_EN,District_Name_Lao,Province_Name_EN
+01,0101,Chanthabuly,ຈັນທະບູລີ,Vientiane Prefecture
+01,0102,Sikhottabong,ສີໂຄດຕະບອງ,Vientiane Prefecture
+01,0103,Xaysetha,ໄຊເສດຖາ,Vientiane Prefecture
+01,0104,Sisattanak,ສີສັດຕະນາກ,Vientiane Prefecture
+01,0105,Naxaithong,ນາຊາຍທອງ,Vientiane Prefecture
+01,0106,Xaythany,ໄຊທານີ,Vientiane Prefecture
+01,0107,Hadxayfong,ຫາດຊາຍຟອງ,Vientiane Prefecture
+01,0108,Sangthong,ສັງທອງ,Vientiane Prefecture
+01,0109,Mayparkngum,ໃໝ່ປາກງື່ມ,Vientiane Prefecture
+02,0201,Phongsaly,ຜົ້ງສາລີ,Phongsaly
+02,0202,May,ໃໝ່,Phongsaly
+02,0203,Khoua,ຂວາ,Phongsaly
+02,0204,Samphanh,ສຳພັນ,Phongsaly
+02,0205,Boun Neua,ບຸນເໜືອ,Phongsaly
+02,0206,Yot Ou,ຍອດອູ,Phongsaly
+02,0207,Boun Tay,ບຸນໃຕ້,Phongsaly
+03,0301,Namtha,ນໍ້າທາ,Luang Namtha
+03,0302,Sing,ສິງ,Luang Namtha
+03,0303,Long,ລອງ,Luang Namtha
+03,0304,Viengphoukha,ວຽງພູຄາ,Luang Namtha
+03,0305,Na Le,ນາແລ,Luang Namtha
+04,0401,Xay,ໄຊ,Oudomxay
+04,0402,La,ຫຼາ,Oudomxay
+04,0403,Nambak,ນ້ຳບາກ,Oudomxay
+04,0403,Nga,ງາ,Oudomxay
+04,0404,Beng,ແບ່ງ,Oudomxay
+04,0405,Houn,ຮຸນ,Oudomxay
+04,0406,Pak Beng,ປາກແບ່ງ,Oudomxay
+04,0407,Na Mo,ນາໝໍ້,Oudomxay
+05,0501,Houayxay,ຫ້ວຍຊາຍ,Bokeo
+05,0502,Ton Pheung,ຕົ້ນເຜິ້ງ,Bokeo
+05,0503,Meung,ເມິງ,Bokeo
+05,0504,Pha Oudom,ຜາອຸດົມ,Bokeo
+05,0505,Pak Tha,ປາກທາ,Bokeo
+06,0601,Luang Prabang,ຫຼວງພະບາງ,Luang Prabang
+06,0602,Xieng Ngeun,ຊຽງເງິນ,Luang Prabang
+06,0603,Nan,ນານ,Luang Prabang
+06,0604,Pak Ou,ປາກອູ,Luang Prabang
+06,0605,Nambak,ນ້ຳບາກ,Luang Prabang
+06,0606,Ngoy,ງອຍ,Luang Prabang
+06,0607,Pak Seng,ປາກແຊງ,Luang Prabang
+06,0608,Phonxay,ໂພນໄຊ,Luang Prabang
+06,0609,Chomphet,ຈອມເພັດ,Luang Prabang
+06,0610,Viengkham,ວຽງຄຳ,Luang Prabang
+06,0611,Phoukhoune,ພູຄູນ,Luang Prabang
+06,0612,Phonthong,ໂພນທອງ,Luang Prabang
+07,0701,Xam Neua,ຊຳເໜືອ,Houaphan
+07,0702,Xiengkhor,ຊຽງຄໍ້,Houaphan
+07,0703,Viengthong,ວຽງທອງ,Houaphan
+07,0704,Viengxay,ວຽງໄຊ,Houaphan
+07,0705,Huameuang,ຫົວເມືອງ,Houaphan
+07,0706,Samtay,ຊຳໃຕ້,Houaphan
+07,0707,Sop Bao,ສົບເບົາ,Houaphan
+07,0708,Et,ແອດ,Houaphan
+07,0709,Kone,ໂກນ,Houaphan
+07,0710,Xam Tay,ຊຳໃຕ້,Houaphan
+08,0801,Sainyabuli,ໄຊຍະບູລີ,Sainyabuli
+08,0802,Khop,ຄອບ,Sainyabuli
+08,0803,Hongsa,ຫົງສາ,Sainyabuli
+08,0804,Ngeun,ເງິນ,Sainyabuli
+08,0805,Xiengkhone,ຊຽງຮ່ອນ,Sainyabuli
+08,0806,Phiang,ພຽງ,Sainyabuli
+08,0807,Parklai,ປາກລາຍ,Sainyabuli
+08,0808,Kenethao,ແກ່ນທ້າວ,Sainyabuli
+08,0809,Botene,ບໍ່ແຕນ,Sainyabuli
+08,0810,Thongmyxay,ທົ່ງມີໄຊ,Sainyabuli
+08,0811,Xaisanyabuli,ໄຊສະຖານ,Sainyabuli
+09,0901,Pek,ແປກ,Xiengkhouang
+09,0902,Kham,ຄຳ,Xiengkhouang
+09,0903,Nong Het,ໜອງແຮດ,Xiengkhouang
+09,0904,Khoune,ຄູນ,Xiengkhouang
+09,0905,Mok May,ໝອກໃໝ່,Xiengkhouang
+09,0906,Phou Kout,ພູກູດ,Xiengkhouang
+09,0907,Phaxay,ຜາໄຊ,Xiengkhouang
+10,1001,Phonhong,ໂພນໂຮງ,Vientiane Province
+10,1002,Thoulakhom,ທຸລະຄົມ,Vientiane Province
+10,1003,Keo Oudom,ແກ້ວອຸດົມ,Vientiane Province
+10,1004,Kasy,ກາສີ,Vientiane Province
+10,1005,Vangvieng,ວັງວຽງ,Vientiane Province
+10,1006,Feuang,ເຟືອງ,Vientiane Province
+10,1007,Xanakharm,ຊະນະຄາມ,Vientiane Province
+10,1008,Mad,ແມດ,Vientiane Province
+10,1009,Viengkham,ວຽງຄຳ,Vientiane Province
+10,1010,Hinhurp,ຫີນເຫີບ,Vientiane Province
+10,1011,Muen,ໝື່ນ,Vientiane Province
+11,1101,Paksane,ປາກຊັນ,Bolikhamxai
+11,1102,Thaphabath,ທ່າພະບາດ,Bolikhamxai
+11,1103,Pakkading,ປາກກະດິງ,Bolikhamxai
+11,1104,Borikhane,ບໍລິຄັນ,Bolikhamxai
+11,1105,Khamkeut,ຄຳເກີດ,Bolikhamxai
+11,1106,Viengthong,ວຽງທອງ,Bolikhamxai
+11,1107,Xaychamphone,ໄຊຈຳພອນ,Bolikhamxai
+12,1201,Thakhek,ທ່າແຂກ,Khammouane
+12,1202,Mahaxay,ມະຫາໄຊ,Khammouane
+12,1203,Nong Bok,ໜອງບົກ,Khammouane
+12,1204,Hineboune,ຫີນບູນ,Khammouane
+12,1205,Gnommalath,ຍົມມະລາດ,Khammouane
+12,1206,Bualapha,ບົວລະພາ,Khammouane
+12,1207,Nakai,ນາກາຍ,Khammouane
+12,1208,Xebangfay,ເຊບັ້ງໄຟ,Khammouane
+12,1209,Xaybouathong,ໄຊບົວທອງ,Khammouane
+12,1210,Kounkham,ຄູນຄຳ,Khammouane
+13,1301,Kaysone Phomvihane,ໄກສອນ ພົມວິຫານ,Savannakhet
+13,1302,Outhoumphone,ອຸທຸມພອນ,Savannakhet
+13,1303,Atsaphangthong,ອາດສະພັງທອງ,Savannakhet
+13,1304,Phine,ພີນ,Savannakhet
+13,1305,Sepon,ເຊໂປນ,Savannakhet
+13,1306,Nong,ນອງ,Savannakhet
+13,1307,Thaphalanxay,ທ່າປາງທອງ,Savannakhet
+13,1308,Songkhone,ສອງຄອນ,Savannakhet
+13,1309,Champhone,ຈຳພອນ,Savannakhet
+13,1310,Xonboury,ໄຊບູລີ,Savannakhet
+13,1311,Xayphouthong,ໄຊພູທອງ,Savannakhet
+13,1312,Phalanxay,ພະລານໄຊ,Savannakhet
+13,1313,Vilaboury,ວີລະບູລີ,Savannakhet
+13,1314,Assaphone,ອັດສະພອນ,Savannakhet
+13,1315,Thapangthong,ທ່າປາງທອງ,Savannakhet
+14,1401,Salavan,ສາລະວັນ,Salavan
+14,1402,Ta Oi,ຕະໂອ້ຍ,Salavan
+14,1403,Toumlane,ຕຸ້ມລານ,Salavan
+14,1404,Lakhonepheng,ລະຄອນເພັງ,Salavan
+14,1405,Vapi,ວາປີ,Salavan
+14,1406,Khongxedone,ຄົງເຊໂດນ,Salavan
+14,1407,Lao Ngam,ເລົ່າງາມ,Salavan
+14,1408,Samuoi,ສະໝ້ວຍ,Salavan
+15,1501,Lamarm,ລະມາມ,Sekong
+15,1502,Kaleum,ກະເລືມ,Sekong
+15,1503,Dakcheung,ດັກຈຶງ,Sekong
+15,1504,Thateng,ທ່າແຕງ,Sekong
+16,1601,Pakse,ປາກເຊ,Champasak
+16,1602,Sanasomboun,ຊະນະສົມບູນ,Champasak
+16,1603,Bachiangchaleunsook,ບາຈຽງຈະເລີນສຸກ,Champasak
+16,1604,Paksong,ປາກຊ່ອງ,Champasak
+16,1605,Pathoumphone,ປະທຸມພອນ,Champasak
+16,1606,Phonthong,ໂພນທອງ,Champasak
+16,1607,Champasak,ຈຳປາສັກ,Champasak
+16,1608,Sukhuma,ສຸຂຸມາ,Champasak
+16,1609,Mounlapamok,ມູນລະປະໂມກ,Champasak
+16,1610,Khong,ໂຂງ,Champasak
+17,1701,Xaysetha,ໄຊເສດຖາ,Attapeu
+17,1702,Samakkhixay,ສາມັກຄີໄຊ,Attapeu
+17,1703,Sanamxay,ສະໜາມໄຊ,Attapeu
+17,1704,Phouvong,ພູວົງ,Attapeu
+17,1705,Xaysana,ໄຊຊະນະ,Attapeu
+18,1801,Anouvong,ອານຸວົງ,Xaisomboun
+18,1802,Longchaeng,ລ້ອງແຈ້ງ,Xaisomboun
+18,1803,Longxan,ລ້ອງຊັນ,Xaisomboun
+18,1804,Hom,ຮົ່ມ,Xaisomboun
+18,1805,Thathom,ທ່າໂທມ,Xaisomboun
