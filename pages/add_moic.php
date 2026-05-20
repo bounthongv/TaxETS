@@ -7,6 +7,7 @@ $pdo = getDbConnection();
 $provinces = $pdo->query("SELECT * FROM provinces WHERE active = 1 ORDER BY province_name")->fetchAll();
 $moic_categories = $pdo->query("SELECT * FROM moic_categories WHERE active = 1 ORDER BY category_name")->fetchAll();
 $enterprise_types = $pdo->query("SELECT * FROM enterprise_types WHERE active = 1 ORDER BY type_name")->fetchAll();
+$statuses = $pdo->query("SELECT * FROM enterprise_project_status ORDER BY id ASC")->fetchAll();
 ?>
 
 <div class="row mb-3">
@@ -98,10 +99,14 @@ $enterprise_types = $pdo->query("SELECT * FROM enterprise_types WHERE active = 1
                     </div>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <div class="form-check form-switch mt-4 pt-2">
-                        <input class="form-check-input" type="checkbox" name="is_active" id="isActive" checked value="1">
-                        <label class="form-check-label fw-bold" for="isActive">Enterprise Active</label>
-                    </div>
+                    <label class="form-label fw-bold">Enterprise/Project Status</label>
+                    <select name="status_id" class="form-select">
+                        <?php foreach ($statuses as $st): ?>
+                        <option value="<?= $st['id'] ?>" <?= $st['status_name'] == 'Active' ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($st['status_name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 

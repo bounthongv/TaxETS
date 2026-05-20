@@ -15,9 +15,10 @@ if (isset($_GET['delete'])) {
 
 // Fetch Records
 $records = $pdo->query("
-    SELECT r.*, v.village_name 
+    SELECT r.*, v.village_name, s.status_name
     FROM repo_moic r
     LEFT JOIN villages v ON r.village_id = v.id
+    LEFT JOIN enterprise_project_status s ON r.status_id = s.id
     ORDER BY r.id DESC
 ")->fetchAll();
 ?>
@@ -57,7 +58,17 @@ $records = $pdo->query("
                     <td><small class="font-monospace fw-bold"><?= htmlspecialchars($r['tin']) ?></small></td>
                     <td><?= htmlspecialchars($r['company_name']) ?></td>
                     <td><?= $r['license_date'] ?></td>
-                    <td><span class="badge bg-<?= $r['is_active'] ? 'success' : 'secondary' ?>"><?= $r['is_active'] ? 'Active' : 'Inactive' ?></span></td>
+                    <td>
+                        <?php 
+                            $status_name = $r['status_name'] ?? 'Unknown';
+                            $badge_class = 'secondary';
+                            if ($status_name == 'Active') $badge_class = 'success';
+                            elseif ($status_name == 'Cancel') $badge_class = 'danger';
+                            elseif ($status_name == 'Pending') $badge_class = 'warning text-dark';
+                            elseif (strpos($status_name, 'Phase') !== false) $badge_class = 'info';
+                        ?>
+                        <span class="badge bg-<?= $badge_class ?>"><?= htmlspecialchars($status_name) ?></span>
+                    </td>
                     <td class="text-center">
                         <a href="edit_moic.php?id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
                         <a href="?delete=<?= $r['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')"><i class="fas fa-trash"></i></a>

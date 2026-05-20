@@ -41,6 +41,7 @@
         <li class="<?= $cur == 'dictionary_sector.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_sector.php">Business Sector</a></li>
         <li class="<?= $cur == 'dictionary_moic_categories.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_moic_categories.php">MOIC Categories</a></li>
         <li class="<?= $cur == 'repo_gdp.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_gdp.php">GDP, Revenue</a></li>
+        <li class="<?= $cur == 'dictionary_status.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/dictionary_status.php">Enterprise/Project Status</a></li>
       </ul>
     </li>
 
@@ -128,7 +129,7 @@
                 <i class="fas fa-file-import me-2"></i> Import Data from TaxRIS and Others
               </a>
               <ul class="collapse list-unstyled ps-3 <?= ($is_molsw || $is_lse || $is_moic || $is_mpi || $is_taxris) ? 'show' : '' ?>" id="importTaxrisSub">
-                <li><a href="#"><i class="fas fa-plus me-2"></i>Import New Data</a></li>
+                <li class="<?= $cur == 'import_new_data.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_new_data.php"><i class="fas fa-plus me-2"></i>Consolidated Stakeholder Import</a></li>
                 <li class="<?= $is_moic ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_moic.php"><i class="fas fa-building me-2"></i>Get data from MOIC</a></li>
                 <li class="<?= $is_taxris ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_taxris.php"><i class="fas fa-file-invoice-dollar me-2"></i>Get data from TaxRIS</a></li>
                 <li class="<?= $is_mpi ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_mpi.php"><i class="fas fa-chart-line me-2"></i>Get data from MPI</a></li>
