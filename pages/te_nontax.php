@@ -12,7 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     $msg_type = "info";
 }
 
-$batches = $pdo->query("SELECT DISTINCT import_batch_id FROM companies WHERE resource_extraction_item IS NOT NULL ORDER BY import_date DESC")->fetchAll();
+$batches = $pdo->query("SELECT DISTINCT import_batch_id FROM companies WHERE resource_extraction_item IS NOT NULL ORDER BY import_batch_id DESC")->fetchAll();
 
 require_once __DIR__ . "/../includes/header.php";
 ?>

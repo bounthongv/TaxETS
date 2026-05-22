@@ -188,6 +188,8 @@
         <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT TE</a></li>
         <li class="<?= $cur == 'te_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_dev.php">SEZ Developer TE</a></li>
         <li class="<?= $cur == 'te_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">SEZ Investor TE</a></li>
+        <li class="<?= $cur == 'te_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_resource.php">Resource Fee TE</a></li>
+        <li class="<?= $cur == 'te_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_royalty.php">Royalty Fee TE</a></li>
         <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_land' ? 'active' : '' ?>">
           <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'calculate_land') !== false ? 'true' : 'false' ?>">
             <i class="fas fa-calculator me-2"></i> Non-Tax

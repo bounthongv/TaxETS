@@ -26,7 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     }
 }
 
-$batches = $pdo->query("SELECT DISTINCT import_batch_id FROM companies WHERE land_area_sqm > 0 ORDER BY import_date DESC")->fetchAll();
+$batches = $pdo->query("SELECT DISTINCT import_batch_id FROM companies WHERE land_area_sqm > 0")->fetchAll();
 
 require_once __DIR__ . "/../includes/header.php";
 ?>
@@ -74,7 +74,7 @@ require_once __DIR__ . "/../includes/header.php";
 <!-- Results -->
 <?php
 $results = $pdo->query("
-    SELECT r.*, c.company_name, c.tax_id, c.land_area_sqm, c.zone_type as company_zone
+    SELECT r.*, c.company_name, c.tin as tax_id, c.land_area_sqm, c.zone_type as company_zone
     FROM te_land_concession_result r
     JOIN companies c ON r.company_id = c.id
     ORDER BY r.te_land_concession DESC
