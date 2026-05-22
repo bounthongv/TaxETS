@@ -85,6 +85,7 @@
         <li class="<?= $cur == 'repo_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_vat.php">Value-Added Tax</a></li>
         <li class="<?= $cur == 'repo_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_customs.php">Customs Duty</a></li>
         <li class="<?= $cur == 'repo_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_excise.php">Excise Tax Services</a></li>
+        <li class="<?= $cur == 'config_sez_provisions.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/config_sez_provisions.php">SEZ Developer/Investor</a></li>
         <li class="<?= $cur == 'repo_nontax.php' ? 'active' : '' ?>">
           <a href="#nonTaxRepoSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'provision_') !== false && strpos($cur, 'land') !== false ? 'true' : 'false' ?>">
             <i class="fas fa-archive me-2"></i> Non-Tax
@@ -178,12 +179,15 @@
         <i class="fas fa-laptop-code me-2"></i> TE Calculation
       </a>
       <ul class="collapse list-unstyled <?= $is_calc ? 'show' : '' ?>" id="calculationSub">
-        <li class="<?= $cur == 'calculator.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculator.php">Profit Tax TE Calculation Engine</a></li>
+        <li class="<?= $cur == 'calculator.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculator.php">Profit Tax TE</a></li>
         <li class="<?= $cur == 'te_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_individual.php">Individual Tax Expenditure</a></li>
+        <li class="<?= $cur == 'te_salary_tax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_salary_tax.php">Salary Tax Expenditure</a></li>
         <li class="<?= $cur == 'te_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_vat.php">Domestic VAT Expenditure</a></li>
         <li class="<?= $cur == 'te_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_customs.php">Custom Tax Expenditure</a></li>
         <li class="<?= $cur == 'te_asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_excise.php">Excise Tax TE</a></li>
         <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT TE</a></li>
+        <li class="<?= $cur == 'te_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_dev.php">SEZ Developer TE</a></li>
+        <li class="<?= $cur == 'te_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">SEZ Investor TE</a></li>
         <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_land' ? 'active' : '' ?>">
           <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'calculate_land') !== false ? 'true' : 'false' ?>">
             <i class="fas fa-calculator me-2"></i> Non-Tax
