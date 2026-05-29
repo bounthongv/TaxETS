@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
 if (!$batch):
     $all_rows = $pdo->query("SELECT i.*, r.te_amount as engine_te, r.benchmark_calculated_tax, r.matched_provisions 
                             FROM import_pit_data i 
-                            LEFT JOIN te_individual_result r ON i.ptin = r.tin AND i.tax_year = r.tax_year 
+                            LEFT JOIN te_individual_result r ON i.ptin = r.tin COLLATE utf8mb4_unicode_ci AND i.tax_year = r.tax_year 
                             ORDER BY i.id DESC")->fetchAll();
 
     $total_records = count($all_rows);
@@ -50,7 +50,7 @@ if (!$batch):
                             COALESCE(SUM(r.te_amount), 0) as total_te,
                             COALESCE(SUM(i.expert_te_total), 0) as total_expert
                             FROM import_pit_data i
-                            LEFT JOIN te_individual_result r ON i.ptin = r.tin AND i.tax_year = r.tax_year
+                            LEFT JOIN te_individual_result r ON i.ptin = r.tin COLLATE utf8mb4_unicode_ci AND i.tax_year = r.tax_year
                             GROUP BY i.batch_id
                             ORDER BY MAX(i.id) DESC")->fetchAll();
 
@@ -136,7 +136,7 @@ require_once __DIR__ . "/../includes/header.php";
 else:
     $stmt = $pdo->prepare("SELECT i.*, r.benchmark_calculated_tax, r.te_amount as engine_te, r.matched_provisions 
                            FROM import_pit_data i 
-                           LEFT JOIN te_individual_result r ON i.ptin = r.tin AND i.tax_year = r.tax_year 
+                           LEFT JOIN te_individual_result r ON i.ptin = r.tin COLLATE utf8mb4_unicode_ci AND i.tax_year = r.tax_year 
                            WHERE i.batch_id = ?
                            ORDER BY i.id ASC");
     $stmt->execute([$batch]);
