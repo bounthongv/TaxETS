@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS `import_salary_tax_data` (
   `batch_id` varchar(50) NOT NULL,
   `import_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `tin` varchar(50) DEFAULT NULL,
+  `tax_year` int(4) DEFAULT NULL,
   `filing_type` varchar(50) DEFAULT NULL,
   `filing_period` varchar(50) DEFAULT NULL,
   `input_date` date DEFAULT NULL,

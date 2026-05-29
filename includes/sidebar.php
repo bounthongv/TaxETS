@@ -107,7 +107,8 @@
         $is_mpi = (strpos($cur, 'mpi') !== false);
         $is_taxris = (strpos($cur, 'taxris') !== false);
         $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi || $is_taxris);
-        $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req) || (strpos($cur, 'asycuda_') !== false);
+        $is_asycuda_pages = (strpos($cur, 'asycuda_') !== false || $cur == 'import_asycuda.php' || $cur == 'view_asycuda.php' || $cur == 'asycuda_index.php');
+        $is_import_te = ((strpos($cur, 'import_') !== false || strpos($cur, 'view_sez_') !== false || strpos($cur, 'view_resource') !== false || strpos($cur, 'view_royalty') !== false || $is_asycuda_pages) && !$is_data_req);
         $is_import_excel = ($is_data_req || $is_import_te);
     ?>
     <li class="<?= $is_import_excel ? 'active' : '' ?>">
@@ -146,9 +147,9 @@
             <i class="fas fa-calculator me-2"></i> Data Requirement to estimate TE
           </a>
           <ul class="collapse list-unstyled ps-3 <?= $is_import_te ? 'show' : '' ?>" id="importTESub">
-            <?php $is_asycuda = (strpos($cur, 'asycuda_') !== false || $cur == 'import_asycuda.php'); ?>
+            <?php $is_asycuda = $is_asycuda_pages; ?>
             <li class="<?= $is_asycuda ? 'active' : '' ?>">
-                <a href="<?= BASE_URL ?>/pages/asycuda_index.php" class="dropdown-toggle" aria-expanded="<?= $is_asycuda ? 'true' : 'false' ?>">Data from ASYCUDA</a>
+                <a href="#asySub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_asycuda ? 'true' : 'false' ?>">Data from ASYCUDA</a>
                 <ul class="collapse list-unstyled ps-3 <?= $is_asycuda ? 'show' : '' ?>" id="asySub">
                     <li class="<?= $cur == 'import_asycuda.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_asycuda.php">Import New Data</a></li>
                     <li class="<?= $cur == 'asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/asycuda_customs.php">Custom Duty</a></li>
@@ -157,14 +158,14 @@
                 </ul>
             </li>
             <li class="<?= $cur == 'import_cit.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_cit.php">Profit Tax</a></li>
-            <li class="<?= $cur == 'import_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a></li>
-            <li class="<?= $cur == 'import_salary.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a></li>
-            <li class="<?= $cur == 'import_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a></li>
-            <li class="<?= $cur == 'import_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a></li>
-            <li class="<?= $cur == 'import_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a></li>
+            <li class="<?= ($cur == 'import_individual.php' || $cur == 'view_individual.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a></li>
+            <li class="<?= ($cur == 'import_salary.php' || $cur == 'view_salary.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a></li>
+            <li class="<?= ($cur == 'import_vat.php' || $cur == 'view_vat.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a></li>
+            <li class="<?= ($cur == 'import_sez_dev.php' || $cur == 'view_sez_dev.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a></li>
+            <li class="<?= ($cur == 'import_sez_inv.php' || $cur == 'view_sez_inv.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a></li>
             <li class="<?= $cur == 'import_land.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land.php">Non-Tax: Land concession</a></li>
-            <li class="<?= $cur == 'import_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
-            <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
+            <li class="<?= ($cur == 'import_resource.php' || $cur == 'view_resource.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
+            <li class="<?= ($cur == 'import_royalty.php' || $cur == 'view_royalty.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
           </ul>
         </li>
       </ul>
@@ -181,6 +182,9 @@
         <li class="<?= $cur == 'te_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_individual.php">Individual Tax Expenditure</a></li>
         <li class="<?= $cur == 'te_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_vat.php">Domestic VAT Expenditure</a></li>
         <li class="<?= $cur == 'te_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_customs.php">Custom Tax Expenditure</a></li>
+        <li class="<?= ($cur == 'te_sez_dev.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_dev.php">SEZ Developer TE</a></li>
+        <li class="<?= ($cur == 'te_sez_inv.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">SEZ Investor TE</a></li>
+        <li class="<?= $cur == 'te_asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_customs.php">Customs Duty TE</a></li>
         <li class="<?= $cur == 'te_asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_excise.php">Excise Tax TE</a></li>
         <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT TE</a></li>
         <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_land' ? 'active' : '' ?>">

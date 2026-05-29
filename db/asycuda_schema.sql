@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS `asycuda_imports` (
     `import_batch_id` VARCHAR(50),
     `import_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `province` VARCHAR(100),
+    `pro_id` VARCHAR(10) DEFAULT NULL,
     `tin` VARCHAR(50),
     `border_code` VARCHAR(20),
     `border_name` VARCHAR(100),

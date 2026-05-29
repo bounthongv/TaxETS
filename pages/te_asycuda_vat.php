@@ -72,9 +72,12 @@ if ($batch_id) {
 ?>
 
 <div class="row mb-3">
-    <div class="col-12 text-start">
-        <h2><i class="fas fa-file-invoice-dollar me-2 text-info"></i> Import VAT Tax Expenditure (ASYCUDA)</h2>
+    <div class="col-md-8">
+        <h2><i class="fas fa-file-invoice-dollar me-2 text-info"></i> Import VAT TE (ASYCUDA)</h2>
         <p class="text-muted">Analyze Tax Expenditure for Import VAT based on ASYCUDA transactions.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="import_asycuda.php" class="btn btn-outline-primary"><i class="fas fa-file-import me-1"></i> Import New Data</a>
     </div>
 </div>
 
@@ -134,12 +137,12 @@ if ($batch_id) {
         </div>
     </div>
 
-    <!-- Summary Stats (Only visible if calculated) -->
+    <!-- Summary Stats -->
     <div class="col-md-8">
-        <?php if ($is_calculated && $summary): ?>
+        <?php if ($batch_id && $summary): ?>
         <div class="row g-3 mb-4 text-center">
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 5px solid #0d6efd !important;">
+                <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0d6efd !important;">
                     <div class="card-body">
                         <div class="text-muted small text-uppercase mb-1">Total Invoice (LAK)</div>
                         <div class="h4 mb-0 fw-bold text-dark"><?= number_format($summary['total_invoice'] ?? 0, 2) ?></div>
@@ -147,7 +150,7 @@ if ($batch_id) {
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 5px solid #0dcaf0 !important;">
+                <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0dcaf0 !important;">
                     <div class="card-body">
                         <div class="text-muted small text-uppercase mb-1">Paid Import VAT</div>
                         <div class="h4 mb-0 fw-bold"><?= number_format($summary['total_paid'] ?? 0, 2) ?></div>
@@ -163,7 +166,48 @@ if ($batch_id) {
                 </div>
             </div>
         </div>
-        <?php elseif ($batch_id): ?>
+
+        <?php if ($is_calculated && !empty($records)): ?>
+        <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2 text-info"></i> Calculation Result: <?= htmlspecialchars($batch_id) ?></h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="bg-light sticky-top">
+                            <tr>
+                                <th class="ps-4">No.</th>
+                                <th>Doc Date</th>
+                                <th>Importer TIN</th>
+                                <th>Importer Name</th>
+                                <th>HS Code</th>
+                                <th class="text-end">Invoice Amount</th>
+                                <th class="text-end">Paid VAT</th>
+                                <th class="text-end table-info border-start">Import VAT TE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $no = 1;
+                            foreach ($records as $r): ?>
+                            <tr>
+                                <td class="ps-4 text-muted"><?= $no++ ?></td>
+                                <td><?= htmlspecialchars($r['doc_date'] ?? '-') ?></td>
+                                <td class="font-monospace text-muted small"><?= htmlspecialchars($r['tin'] ?? '-') ?></td>
+                                <td class="fw-bold"><?= htmlspecialchars($r['importer_name'] ?? '-') ?></td>
+                                <td class="font-monospace"><?= htmlspecialchars($r['hs_code'] ?? '-') ?></td>
+                                <td class="text-end"><?= number_format($r['invoice_amount_lak'], 2) ?></td>
+                                <td class="text-end text-info"><?= number_format($r['paid_vat'], 2) ?></td>
+                                <td class="text-end table-info border-start fw-bold text-dark"><?= number_format($r['exempt_vat'], 2) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php else: ?>
         <div class="card border-0 shadow-sm h-100 d-flex align-items-center justify-content-center py-5 text-muted" style="border-radius: 12px; background: #f8f9fa;">
             <div class="text-center">
                 <i class="fas fa-calculator fa-4x mb-3 text-info opacity-25"></i>
@@ -171,6 +215,7 @@ if ($batch_id) {
                 <p>Select a batch and click <strong>"Run TE Calculation"</strong> to view results<br>and update the consolidated reports.</p>
             </div>
         </div>
+        <?php endif; ?>
         <?php else: ?>
         <div class="card border-0 shadow-sm h-100 d-flex align-items-center justify-content-center py-5 text-muted" style="border-radius: 12px;">
             <i class="fas fa-chart-line fa-4x mb-3 opacity-10"></i>
@@ -179,49 +224,6 @@ if ($batch_id) {
         <?php endif; ?>
     </div>
 </div>
-
-<?php if ($batch_id && $is_calculated && !empty($records)): ?>
-<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-table me-2 text-info"></i> Calculation Result: <?= htmlspecialchars($batch_id) ?></h5>
-        <button class="btn btn-outline-success btn-sm"><i class="fas fa-file-excel me-1"></i> Export Result</button>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive" style="max-height: 500px;">
-            <table class="table table-hover align-middle mb-0 small">
-                <thead class="bg-light sticky-top">
-                    <tr>
-                        <th class="ps-4">No.</th>
-                        <th>Doc Date</th>
-                        <th>Importer TIN</th>
-                        <th>Importer Name</th>
-                        <th>HS Code</th>
-                        <th class="text-end">Invoice Amount</th>
-                        <th class="text-end">Paid VAT</th>
-                        <th class="text-end table-info border-start">Import VAT TE</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $no = 1;
-                    foreach ($records as $r): ?>
-                    <tr>
-                        <td class="ps-4 text-muted"><?= $no++ ?></td>
-                        <td><?= htmlspecialchars($r['doc_date'] ?? '-') ?></td>
-                        <td class="font-monospace text-muted small"><?= htmlspecialchars($r['tin'] ?? '-') ?></td>
-                        <td class="fw-bold"><?= htmlspecialchars($r['importer_name'] ?? '-') ?></td>
-                        <td class="font-monospace"><?= htmlspecialchars($r['hs_code'] ?? '-') ?></td>
-                        <td class="text-end"><?= number_format($r['invoice_amount_lak'], 2) ?></td>
-                        <td class="text-end text-info"><?= number_format($r['paid_vat'], 2) ?></td>
-                        <td class="text-end table-info border-start fw-bold text-dark"><?= number_format($r['exempt_vat'], 2) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
 
 <div class="mt-4 p-3 bg-white shadow-sm rounded text-muted small border-start border-info border-5">
     <i class="fas fa-info-circle me-2 text-info"></i> <strong>Note on TE Calculation:</strong> For Import VAT, Tax Expenditure currently reflects the <code>Exempt_VAT</code> amount recorded during ASYCUDA import. In this phase, the engine verifies and persists these values for reporting.

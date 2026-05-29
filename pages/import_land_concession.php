@@ -13,44 +13,23 @@ $pdo = getDbConnection();
 $message = "";
 $msg_type = "success";
 
-// --- Handle Upload ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
     try {
         $file = $_FILES["excel_file"];
         $tax_year = (int)$_POST["tax_year"];
-
-        if ($file["error"] !== UPLOAD_ERR_OK) {
-            throw new Exception("Upload error.");
-        }
-        if (!in_array(pathinfo($file["name"], PATHINFO_EXTENSION), ["xlsx","xls"])) {
-            throw new Exception("Invalid file type.");
-        }
-
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
-        $batch_id = "BATCH_" . date("YmdHis");
+        $batch_id = "BATCH_LAND_" . date("YmdHis");
+        
         $imported = 0; $skipped = 0;
-        $unmapped_prov = 0; $unmapped_dist = 0; $unmapped_sect = 0;
+        $unmapped_prov = 0; $unmapped_dist = 0;
         $error_log = [];
 
-        // --- Pre-load Dictionary for Smart Mapping ---
-        $prov_rows = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces")->fetchAll();
-        $dist_rows = $pdo->query("SELECT d.district_code AS dis_id, p.province_code AS pro_id, d.district_name AS dis_name FROM districts d LEFT JOIN provinces p ON d.province_id = p.id")->fetchAll();
-        $sect_rows = $pdo->query("SELECT id, sector_name FROM business_sectors")->fetchAll();
-
-        $prov_map = []; foreach ($prov_rows as $r) { $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']]; }
-        $prov_aliases = [
-            'BOLIKHAMSAI'  => '11', 'BOLIKHAMXAI'  => '11', 'BORIKHAMXAY'  => '11',
-            'XIANGKHOUANG' => '09', 'XIENGKHOUANG' => '09',
-            'VIENTIANE'    => '01',
-            'BOKEO'        => '05', 'LUANGPRABANG' => '06', 'LUANGPHRABANG' => '06',
-            'LUANGNAMTHA'  => '03', 'OUDOMXAY'     => '04',
-            'SAYABOURY'    => '08', 'SAYABURI'     => '08', 'XAYABOURY' => '08',
-            'SARAVANE'     => '14', 'SEKONG'       => '15', 'XEKONG' => '15',
-            'ATTAPEU'      => '17', 'ATTAPU'       => '17', 'XAISOMBOUN' => '18',
-        ];
-        $sect_map = []; foreach ($sect_rows as $r) { $sect_map[strtoupper(trim($r['sector_name']))] = $r['id']; }
+        // 1. Pre-load Dictionary for Resolution
+        $prov_rows = $pdo->query("SELECT pro_id, pro_name FROM province")->fetchAll();
+        $dist_rows = $pdo->query("SELECT dis_id, pro_id, dis_name FROM district")->fetchAll();
         
+        $prov_map = []; foreach ($prov_rows as $r) { $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']]; }
         $dist_map = []; 
         $dist_by_province = [];
         foreach ($dist_rows as $r) { 
@@ -59,46 +38,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         }
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-            $tin = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
+            $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? '');
             if (empty($tin)) { $skipped++; continue; }
 
-            $flag = function($col) use ($sheet, $row) {
-                $v = $sheet->getCell($col . $row)->getCalculatedValue();
-                return ($v == 1 || strtolower(trim($v ?? '')) === "yes") ? 1 : 0;
-            };
-            $dateVal = function($col) use ($sheet, $row) {
-                $v = $sheet->getCell($col . $row)->getCalculatedValue();
-                if (!$v) return null;
-                if (is_numeric($v)) {
-                    $d = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($v);
-                    return $d->format("Y-m-d");
-                }
-                return $v;
-            };
-
-            $act1 = $flag("AC"); $act2 = $flag("AD"); $act3 = $flag("AE");
-            $act4 = $flag("AF"); $act5 = $flag("AG"); $act6 = $flag("AH");
-            $act7 = $flag("AI"); $act8 = $flag("AJ"); $act9 = $flag("AK");
-            $flag_act_1_4_7_8_9 = ($act1 || $act4 || $act7 || $act8 || $act9) ? 1 : 0;
-            $flag_act_2_3_5_6   = ($act2 || $act3 || $act5 || $act6) ? 1 : 0;
-
-            $excel_year = (int)$sheet->getCell("A" . $row)->getCalculatedValue();
+            $raw_prov = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
+            $raw_dist = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? '');
             
-            $raw_prov = trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
-            $raw_dist = trim($sheet->getCell("F" . $row)->getCalculatedValue() ?? '');
-            $raw_sect = trim($sheet->getCell("J" . $row)->getCalculatedValue() ?? '');
-
+            // Resolve IDs
             $upper_prov = strtoupper($raw_prov);
             $prov_match = $prov_map[$upper_prov] ?? null;
-            if (!$prov_match && isset($prov_aliases[$upper_prov])) {
-                $alias_pro_id = $prov_aliases[$upper_prov];
-                foreach ($prov_rows as $pr) {
-                    if ($pr['pro_id'] == $alias_pro_id) {
-                        $prov_match = ['pro_id' => $pr['pro_id'], 'name' => $pr['pro_name']];
-                        break;
-                    }
-                }
-            }
+            
+            // Fuzzy fallback for province
             if (!$prov_match && strlen($upper_prov) >= 3) {
                 $best_score = 999; $best_match = null;
                 foreach ($prov_map as $pname => $pdata) {
@@ -107,6 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 }
                 if ($best_score <= 3 && $best_match) $prov_match = $best_match;
             }
+            
             $pro_id = $prov_match['pro_id'] ?? null;
             if (!$pro_id && !empty($raw_prov)) { 
                 $unmapped_prov++; 
@@ -133,72 +84,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $error_log[] = "Row $row: Unknown District '$raw_dist' in Province '$official_province'";
             }
 
-            $official_district = '';
-            if ($dis_id) {
-                $official_district = $pdo->query("SELECT district_name FROM districts WHERE district_code = " . $pdo->quote($dis_id))->fetchColumn();
-            }
-
-            $sector_id = $sect_map[strtoupper($raw_sect)] ?? null;
-            if (!$sector_id && !empty($raw_sect)) {
-                $unmapped_sect++;
-                $error_log[] = "Row $row: Unknown Sector '$raw_sect'";
-            }
+            $dateVal = function($col) use ($sheet, $row) {
+                $v = $sheet->getCell($col . $row)->getCalculatedValue();
+                if (!$v) return null;
+                if (is_numeric($v)) return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($v)->format("Y-m-d");
+                return date("Y-m-d", strtotime($v));
+            };
 
             $data = [
-                "import_batch_id"            => $batch_id,
-                "tax_year"                   => $excel_year > 0 ? $excel_year : $tax_year,
-                "tin"                        => $tin,
-                "company_name"               => $sheet->getCell("C" . $row)->getCalculatedValue(),
-                "pro_id"                     => $pro_id,
-                "province"                   => $official_province,
-                "dis_id"                     => $dis_id,
-                "district"                   => $official_district ?: $raw_dist,
-                "sector_id"                  => $sector_id,
-                "sector"                     => $raw_sect,
-                "zone_1"                     => $flag("G"),
-                "zone_2"                     => $flag("H"),
-                "zone_3"                     => $flag("I"),
-                "revenue"                    => (float)$sheet->getCell("K" . $row)->getCalculatedValue(),
-                "expense"                    => (float)$sheet->getCell("L" . $row)->getCalculatedValue(),
-                "net_profit"                 => (float)$sheet->getCell("M" . $row)->getCalculatedValue(),
-                "re_invested_profit"         => (float)$sheet->getCell("N" . $row)->getCalculatedValue(),
-                "pt_paid"                    => (float)$sheet->getCell("O" . $row)->getCalculatedValue(),
-                "tax_holiday_years"          => (int)$sheet->getCell("S" . $row)->getCalculatedValue(),
-                "investment_license_date"    => $dateVal("B"),
-                "flag_hr_dev"                => $flag("U"),
-                "flag_eco_friendly"          => $flag("V"),
-                "flag_sez_developer"         => $flag("W"),
-                "flag_sez_investor"          => $flag("X"),
-                "flag_act_production_services" => $flag("Y"),
-                "flag_public_benefit"        => $flag("Z"),
-                "flag_compliant_rental"      => $flag("AA"),
-                "flag_real_estate_transfer"  => $flag("AB"),
-                "flag_act_1_4_7_8_9"         => $flag_act_1_4_7_8_9,
-                "flag_act_2_3_5_6"           => $flag_act_2_3_5_6,
-                "is_vat_holder"              => $flag("AL"),
-                "reinvest_date"              => $dateVal("AM"),
-                "reinvest_amount"            => (float)$sheet->getCell("AN" . $row)->getCalculatedValue(),
-                "total_assets"               => (float)$sheet->getCell("AO" . $row)->getCalculatedValue(),
-                "annual_turnover"            => (float)$sheet->getCell("AP" . $row)->getCalculatedValue(),
-                "staff_count"                => (int)$sheet->getCell("AQ" . $row)->getCalculatedValue(),
-                "stock_exchange_listing_date" => $dateVal("AR"),
-                "registration_date"          => $dateVal("T"),
+                "import_batch_id" => $batch_id,
+                "tax_year" => $tax_year,
+                "tin" => $tin,
+                "company_name" => $sheet->getCell("E" . $row)->getCalculatedValue(),
+                "pro_id" => $pro_id,
+                "province" => $official_province,
+                "dis_id" => $dis_id,
+                "district" => $dis_id ? ($pdo->query("SELECT dis_name FROM district WHERE dis_id = ". $pdo->quote($dis_id))->fetchColumn() ?: $raw_dist) : $raw_dist,
+                "confirm_date" => $dateVal("F"),
+                "concession_area_ha" => (float)$sheet->getCell("G" . $row)->getCalculatedValue(),
+                "benchmark_rate_usd" => (float)$sheet->getCell("H" . $row)->getCalculatedValue(),
+                "contracted_rate_usd" => (float)$sheet->getCell("I" . $row)->getCalculatedValue(),
+                "concession_fee_paid_usd" => (float)$sheet->getCell("J" . $row)->getCalculatedValue(),
+                "benchmark_value_usd" => (float)$sheet->getCell("K" . $row)->getCalculatedValue(),
+                "non_tax_te_usd" => (float)$sheet->getCell("L" . $row)->getCalculatedValue(),
+                "provision_name" => $sheet->getCell("M" . $row)->getCalculatedValue(),
             ];
 
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
-            $pdo->prepare("INSERT INTO companies ($cols) VALUES ($ph)")->execute(array_values($data));
+            $pdo->prepare("INSERT INTO repo_land_concession_data ($cols) VALUES ($ph)")->execute(array_values($data));
             $imported++;
         }
 
-        $message = "<strong>Import Success!</strong> Imported $imported companies.<br><br>";
+        $message = "<strong>Success!</strong> Imported $imported rows.<br><br>";
         $message .= "<strong>Validation Report:</strong><br>";
-        $message .= ($unmapped_prov == 0 ? "✅ All Provinces mapped.<br>" : "⚠️ $unmapped_prov unknown Provinces.<br>");
-        $message .= ($unmapped_dist == 0 ? "✅ All Districts mapped.<br>" : "⚠️ $unmapped_dist unknown Districts.<br>");
-        $message .= ($unmapped_sect == 0 ? "✅ All Sectors mapped.<br>" : "⚠️ $unmapped_sect unknown Sectors.<br>");
+        $message .= ($unmapped_prov == 0 ? "✅ Provinces Mapped.<br>" : "⚠️ $unmapped_prov Unknown Provinces.<br>");
+        $message .= ($unmapped_dist == 0 ? "✅ Districts Mapped." : "⚠️ $unmapped_dist Unknown Districts.");
         
         if (!empty($error_log)) {
-            $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
+            $log_content = "LAND CONCESSION IMPORT DIAGNOSTIC - " . date("Y-m-d H:i:s") . "\r\n";
             $log_content .= "Batch: $batch_id\r\n";
             $log_content .= "----------------------------------------\r\n";
             $log_content .= implode("\r\n", $error_log);
@@ -209,19 +133,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Detailed Error Log</a>";
         }
+
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
     }
 }
 
-$recent = $pdo->query("SELECT import_batch_id, tax_year, COUNT(*) as `rows`, MAX(id) as lid FROM companies GROUP BY import_batch_id, tax_year ORDER BY lid DESC LIMIT 15")->fetchAll();
+$recent = $pdo->query("SELECT import_batch_id, tax_year, COUNT(*) as `rows`, MAX(id) as lid FROM repo_land_concession_data GROUP BY import_batch_id, tax_year ORDER BY lid DESC LIMIT 15")->fetchAll();
 require_once __DIR__ . "/../includes/header.php";
 ?>
 
 <div class="row mb-3">
   <div class="col-12">
-    <h2><i class="fas fa-file-import me-2"></i> CIT Data Import</h2>
-    <p class="text-muted">Upload the CIT Excel template or manage manual entries.</p>
+    <h2><i class="fas fa-mountain me-2 text-success"></i> Land Concession Data Import</h2>
+    <p class="text-muted">Import data requirements for Land Concession TE estimation.</p>
   </div>
 </div>
 
@@ -283,13 +208,14 @@ require_once __DIR__ . "/../includes/header.php";
                 <td><?= $r["tax_year"] ?></td>
                 <td><span class="badge bg-success rounded-pill"><?= $r["rows"] ?></span></td>
                 <td>
-                  <a href="view_companies.php?batch=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
-                  <a href="calculator.php?batch=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
+                  <a href="repo_land_concession.php?batch=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
+                  <a href="calculate_land_concession.php?batch=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
                   <?php if($has_log): ?>
                     <a href="download_log.php?log_id=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-danger" title="Download Log"><i class="fas fa-file-alt"></i></a>
                   <?php endif; ?>
                   <form method="POST" action="delete_batch.php" class="d-inline" onsubmit="return confirm('Delete batch?')">
                     <input type="hidden" name="batch_id" value="<?= htmlspecialchars($r["import_batch_id"]) ?>">
+                    <input type="hidden" name="type" value="land">
                     <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
                   </form>
                 </td>
@@ -336,7 +262,7 @@ document.getElementById("uploadForm").addEventListener("submit", function() {
 
 function goToManualEntry() {
     const year = document.getElementById('manualTaxYear').value;
-    window.location.href = `view_companies.php?batch=MANUAL_ENTRY_${year}&auto_add=1&year=${year}`;
+    window.location.href = `repo_land_concession.php?batch=MANUAL_ENTRY_LAND_${year}&auto_add=1&year=${year}`;
 }
 </script>
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>

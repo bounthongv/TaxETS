@@ -58,7 +58,20 @@ require_once __DIR__ . "/../includes/header.php";
 </div>
 
 <?php if ($message): ?>
-<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show"><?= $message ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm border-start border-4 border-<?= $msg_type ?>">
+    <?= $message ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($res["errors"]) && isset($res)): ?>
+<div class="alert alert-danger alert-dismissible fade show shadow-sm">
+    <strong><i class="fas fa-exclamation-triangle me-2"></i> Calculation Errors:</strong>
+    <ul class="mb-0 mt-2"><?php foreach ($res["errors"] as $err): ?>
+        <li><?= htmlspecialchars($err) ?></li>
+    <?php endforeach; ?></ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
 <?php endif; ?>
 
 <div class="row g-4">
@@ -159,6 +172,17 @@ require_once __DIR__ . "/../includes/header.php";
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
+                        <?php if (!empty($records)): ?>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td colspan="2" class="text-end">BATCH TOTALS</td>
+                                <td class="text-end"><?= number_format(array_sum(array_column($records, "electricity_sale_value")), 2) ?></td>
+                                <td></td>
+                                <td class="text-end"><?= number_format(array_sum(array_column($records, "benchmark_fee")), 2) ?></td>
+                                <td class="text-end text-info"><?= $is_calculated ? number_format(array_sum(array_column($records, "te_amount")), 2) : '<span class="text-muted">—</span>' ?></td>
+                            </tr>
+                        </tfoot>
+                        <?php endif; ?>
                     </table>
                 </div>
             </div>

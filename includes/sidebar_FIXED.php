@@ -60,11 +60,12 @@
         <li class="<?= $cur == 'benchmark_msme.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_msme.php">MSME Definition</a></li>
         <li class="<?= $cur == 'benchmark_customs_regime.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_customs_regime.php">Customs Regime Codes</a></li>
         <li class="<?= $cur == 'benchmark_payment_condition.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_payment_condition.php">Payment Condition Code</a></li>
-        <li class="<?= $cur == 'benchmark_nontax.php' ? 'active' : '' ?>">
-          <a href="#nonTaxBenchSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'benchmark_') !== false && strpos($cur, 'land') !== false ? 'true' : 'false' ?>">
+        <li class="<?= $cur == 'benchmark_nontax.php' || $cur == 'benchmark_land_concession.php' ? 'active' : '' ?>">
+          <?php $is_nontax_bench = ($cur == 'benchmark_nontax.php' || strpos($cur, 'benchmark_land') !== false); ?>
+          <a href="#nonTaxBenchSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_nontax_bench ? 'true' : 'false' ?>">
             <i class="fas fa-money-bill-wave me-2"></i> Non-Tax
           </a>
-          <ul class="collapse list-unstyled <?= strpos($cur, 'benchmark_land') !== false || strpos($cur, 'provision_land') !== false ? 'show' : '' ?>" id="nonTaxBenchSub">
+          <ul class="collapse list-unstyled <?= $is_nontax_bench ? 'show' : '' ?>" id="nonTaxBenchSub">
             <li class="<?= $cur == 'benchmark_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_land_concession.php">Land Concession</a></li>
             <li class="<?= $cur == 'benchmark_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/benchmark_nontax.php">Natural Resource</a></li>
           </ul>
@@ -74,7 +75,18 @@
     </li>
 
     <!-- Repository -->
-    <?php $is_repo = ((strpos($cur, 'repo_') !== false && strpos($cur, 'molsw') === false && strpos($cur, 'lse') === false) || $cur == 'config_provisions.php'); ?>
+    <?php 
+      $is_repo = (
+        (strpos($cur, 'repo_') !== false || strpos($cur, 'provision_') !== false || strpos($cur, 'config_sez_provisions') !== false || strpos($cur, 'config_rules') !== false) 
+        && strpos($cur, 'molsw') === false 
+        && strpos($cur, 'lse') === false 
+        && strpos($cur, 'moic') === false 
+        && strpos($cur, 'mpi') === false 
+        && strpos($cur, 'taxris') === false 
+        && strpos($cur, 'sezo') === false
+        || $cur == 'config_provisions.php'
+      ); 
+    ?>
     <li class="<?= $is_repo ? 'active' : '' ?>">
       <a href="#repositorySub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_repo ? 'true' : 'false' ?>">
         <i class="fas fa-archive me-2"></i> Repository
@@ -86,11 +98,12 @@
         <li class="<?= $cur == 'repo_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_customs.php">Customs Duty</a></li>
         <li class="<?= $cur == 'repo_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_excise.php">Excise Tax Services</a></li>
         <li class="<?= $cur == 'config_sez_provisions.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/config_sez_provisions.php">SEZ Developer/Investor</a></li>
-        <li class="<?= $cur == 'repo_nontax.php' ? 'active' : '' ?>">
-          <a href="#nonTaxRepoSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'provision_') !== false && strpos($cur, 'land') !== false ? 'true' : 'false' ?>">
+        <li class="<?= $cur == 'repo_nontax.php' || $cur == 'provision_land_concession.php' ? 'active' : '' ?>">
+          <?php $is_nontax_repo = ($cur == 'repo_nontax.php' || strpos($cur, 'provision_land') !== false); ?>
+          <a href="#nonTaxRepoSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_nontax_repo ? 'true' : 'false' ?>">
             <i class="fas fa-archive me-2"></i> Non-Tax
           </a>
-          <ul class="collapse list-unstyled <?= strpos($cur, 'provision_land') !== false ? 'show' : '' ?>" id="nonTaxRepoSub">
+          <ul class="collapse list-unstyled <?= $is_nontax_repo ? 'show' : '' ?>" id="nonTaxRepoSub">
             <li class="<?= $cur == 'provision_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/provision_land_concession.php">Land Concession</a></li>
             <li class="<?= $cur == 'repo_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_nontax.php">Natural Resource</a></li>
           </ul>
@@ -164,7 +177,7 @@
             <li class="<?= $cur == 'import_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a></li>
             <li class="<?= $cur == 'import_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a></li>
             <li class="<?= $cur == 'import_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a></li>
-            <li class="<?= $cur == 'import_land.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land.php">Non-Tax: Land concession</a></li>
+            <li class="<?= $cur == 'import_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land_concession.php">Non-Tax: Land concession</a></li>
             <li class="<?= $cur == 'import_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
             <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
           </ul>
@@ -173,7 +186,7 @@
     </li>
 
     <!-- TE Calculation -->
-    <?php $is_calc = (strpos($cur, 'te_') !== false || $cur == 'calculator.php'); ?>
+    <?php $is_calc = (strpos($cur, 'te_') !== false || $cur == 'calculator.php' || strpos($cur, 'calculate_') !== false); ?>
     <li class="<?= $is_calc ? 'active' : '' ?>">
       <a href="#calculationSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_calc ? 'true' : 'false' ?>">
         <i class="fas fa-laptop-code me-2"></i> TE Calculation
@@ -190,11 +203,12 @@
         <li class="<?= $cur == 'te_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">SEZ Investor TE</a></li>
         <li class="<?= $cur == 'te_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_resource.php">Resource Fee TE</a></li>
         <li class="<?= $cur == 'te_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_royalty.php">Royalty Fee TE</a></li>
-        <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_land' ? 'active' : '' ?>">
-          <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'calculate_land') !== false ? 'true' : 'false' ?>">
+        <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_nontax.php' ? 'active' : '' ?>">
+          <?php $is_nontax_calc = (strpos($cur, 'calculate_') !== false || $cur == 'te_nontax.php'); ?>
+          <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_nontax_calc ? 'true' : 'false' ?>">
             <i class="fas fa-calculator me-2"></i> Non-Tax
           </a>
-          <ul class="collapse list-unstyled <?= strpos($cur, 'calculate_land') !== false ? 'show' : '' ?>" id="nonTaxCalcSub">
+          <ul class="collapse list-unstyled <?= $is_nontax_calc ? 'show' : '' ?>" id="nonTaxCalcSub">
             <li class="<?= $cur == 'calculate_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculate_land_concession.php">Land Concession</a></li>
             <li class="<?= $cur == 'te_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_nontax.php">Natural Resource</a></li>
           </ul>
