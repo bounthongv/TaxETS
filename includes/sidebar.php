@@ -107,7 +107,7 @@
         $is_mpi = (strpos($cur, 'mpi') !== false);
         $is_taxris = (strpos($cur, 'taxris') !== false);
         $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi || $is_taxris);
-        $is_asycuda_pages = (strpos($cur, 'asycuda_') !== false || $cur == 'import_asycuda.php' || $cur == 'view_asycuda.php' || $cur == 'asycuda_index.php');
+        $is_asycuda_pages = ((strpos($cur, 'asycuda_') !== false && strpos($cur, 'te_asycuda_') === false) || $cur == 'import_asycuda.php' || $cur == 'view_asycuda.php' || $cur == 'asycuda_index.php');
         $is_import_te = ((strpos($cur, 'import_') !== false || strpos($cur, 'view_sez_') !== false || strpos($cur, 'view_resource') !== false || strpos($cur, 'view_royalty') !== false || $is_asycuda_pages) && !$is_data_req);
         $is_import_excel = ($is_data_req || $is_import_te);
     ?>
@@ -172,28 +172,38 @@
     </li>
 
     <!-- TE Calculation -->
-    <?php $is_calc = (strpos($cur, 'te_') !== false || $cur == 'calculator.php'); ?>
+    <?php
+        $is_calc = (strpos($cur, 'te_') !== false || $cur == 'calculator.php');
+        $is_asy_calc = (strpos($cur, 'te_asycuda_') !== false);
+        $is_nontax_calc = ($cur == 'te_nontax.php' || $cur == 'te_royalty.php' || $cur == 'calculate_land_concession.php');
+    ?>
     <li class="<?= $is_calc ? 'active' : '' ?>">
       <a href="#calculationSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_calc ? 'true' : 'false' ?>">
         <i class="fas fa-laptop-code me-2"></i> TE Calculation
       </a>
       <ul class="collapse list-unstyled <?= $is_calc ? 'show' : '' ?>" id="calculationSub">
-        <li class="<?= $cur == 'calculator.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculator.php">Profit Tax TE Calculation Engine</a></li>
-        <li class="<?= $cur == 'te_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_individual.php">Individual Tax Expenditure</a></li>
-        <li class="<?= $cur == 'te_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_vat.php">Domestic VAT Expenditure</a></li>
-        <li class="<?= $cur == 'te_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_customs.php">Custom Tax Expenditure</a></li>
-        <li class="<?= ($cur == 'te_sez_dev.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_dev.php">SEZ Developer TE</a></li>
-        <li class="<?= ($cur == 'te_sez_inv.php') ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">SEZ Investor TE</a></li>
-        <li class="<?= $cur == 'te_asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_customs.php">Customs Duty TE</a></li>
-        <li class="<?= $cur == 'te_asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_excise.php">Excise Tax TE</a></li>
-        <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT TE</a></li>
-        <li class="<?= strpos($cur, 'calculate_') !== false || $cur == 'te_land' ? 'active' : '' ?>">
-          <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= strpos($cur, 'calculate_land') !== false ? 'true' : 'false' ?>">
+        <li class="<?= $cur == 'calculator.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculator.php">Profit Tax TE</a></li>
+        <li class="<?= $cur == 'te_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_individual.php">Individual Tax TE</a></li>
+        <li class="<?= $cur == 'te_salary_tax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_salary_tax.php">Salary Tax TE</a></li>
+        <li class="<?= $cur == 'te_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_vat.php">Domestic VAT TE</a></li>
+        <li class="<?= $is_asy_calc ? 'active' : '' ?>">
+          <a href="#asyCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_asy_calc ? 'true' : 'false' ?>">Data from ASYCUDA</a>
+          <ul class="collapse list-unstyled ps-3 <?= $is_asy_calc ? 'show' : '' ?>" id="asyCalcSub">
+            <li class="<?= $cur == 'te_asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_customs.php">Customs Duty TE</a></li>
+            <li class="<?= $cur == 'te_asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_excise.php">Excise Tax TE</a></li>
+            <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT TE</a></li>
+          </ul>
+        </li>
+        <li class="<?= $cur == 'te_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_dev.php">For SEZ Developers TE</a></li>
+        <li class="<?= $cur == 'te_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">For SEZ Investors TE</a></li>
+        <li class="<?= $is_nontax_calc ? 'active' : '' ?>">
+          <a href="#nonTaxCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_nontax_calc ? 'true' : 'false' ?>">
             <i class="fas fa-calculator me-2"></i> Non-Tax
           </a>
-          <ul class="collapse list-unstyled <?= strpos($cur, 'calculate_land') !== false ? 'show' : '' ?>" id="nonTaxCalcSub">
-            <li class="<?= $cur == 'calculate_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculate_land_concession.php">Land Concession</a></li>
-            <li class="<?= $cur == 'te_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_nontax.php">Natural Resource</a></li>
+          <ul class="collapse list-unstyled <?= $is_nontax_calc ? 'show' : '' ?>" id="nonTaxCalcSub">
+            <li class="<?= $cur == 'calculate_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculate_land_concession.php">Land concession TE</a></li>
+            <li class="<?= $cur == 'te_nontax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_nontax.php">Resource fee TE</a></li>
+            <li class="<?= $cur == 'te_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_royalty.php">Royalty fee TE</a></li>
           </ul>
         </li>
       </ul>

@@ -4,199 +4,291 @@ require_once __DIR__ . "/../includes/db.php";
 require_once __DIR__ . "/../includes/te_royalty_engine.php";
 
 $pdo = getDbConnection();
-$engine = new TERoyaltyEngine($pdo);
+$batch = $_GET['batch'] ?? '';
+$message = '';
+$msg_type = 'success';
 
-$current_batch = $_GET['batch'] ?? null;
-$message = "";
-$msg_type = "success";
-
-// --- Handle Clear Calculation Results ---
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['clear_results'])) {
-    $bid = $_POST['batch_id'];
-    $pdo->prepare("UPDATE import_royalty_data SET benchmark_rate = 0, benchmark_fee = 0, te_amount = 0, calculated_at = NULL WHERE batch_id = ?")->execute([$bid]);
-    $message = "Calculation results for batch <strong>$bid</strong> have been cleared.";
-}
-
-// --- Handle Calculation ---
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['calculate_batch'])) {
-    $bid = $_POST['batch_id'];
-    $res = $engine->calculateBatch($bid);
-    $message = "Calculation complete! <strong>{$res['calculated']}</strong> records processed. Total TE: <strong>" . number_format($res['total_te'], 2) . "</strong>";
-    $current_batch = $bid;
-}
-
-// Fetch recent batches
-$recent = $pdo->query("SELECT batch_id, tax_year, COUNT(*) as `rows`, SUM(te_amount) as total_te, MAX(import_date) as latest, MAX(calculated_at) as last_calc FROM import_royalty_data GROUP BY batch_id, tax_year ORDER BY latest DESC LIMIT 10")->fetchAll();
-
-// Fetch records
-$records = [];
-if ($current_batch) {
-    $stmt = $pdo->prepare("SELECT * FROM import_royalty_data WHERE batch_id = ? ORDER BY id ASC");
-    $stmt->execute([$current_batch]);
-    $records = $stmt->fetchAll();
-}
-
-$summary = $current_batch ? $engine->getBatchSummary($current_batch) : null;
-$is_calculated = false;
-if (!empty($records)) {
-    foreach ($records as $r) {
-        if ($r['calculated_at'] !== null) {
-            $is_calculated = true;
-            break;
+// Handle Calculate action
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "calculate" && !empty($_POST["batch_id"])) {
+    try {
+        $engine = new TERoyaltyEngine($pdo);
+        $summary = $engine->calculateBatch($_POST["batch_id"]);
+        if (empty($summary["errors"])) {
+            $message = "Calculation complete! <strong>{$summary['calculated']} records</strong> processed. Total TE = <strong>" . number_format($summary["total_te"], 2) . " LAK</strong>";
+        } else {
+            $message = "Calculated with " . count($summary["errors"]) . " errors: " . implode("; ", array_slice($summary["errors"], 0, 3));
+            $msg_type = "warning";
         }
+    } catch (Exception $e) {
+        $message = "Engine error: " . $e->getMessage();
+        $msg_type = "danger";
     }
 }
+
+// --- Batch List Mode ---
+if (!$batch):
+    $all_rows = $pdo->query("SELECT * FROM import_royalty_data ORDER BY id DESC")->fetchAll();
+
+    $total_records = count($all_rows);
+    $total_sale = array_sum(array_column($all_rows, 'electricity_sale_value'));
+    $total_te = array_sum(array_column($all_rows, 'te_amount'));
+    $total_collected = array_sum(array_column($all_rows, 'fee_collected'));
+
+    $batches = $pdo->query("SELECT batch_id, tax_year, COUNT(*) as `rows`,
+                            SUM(electricity_sale_value) as total_sale,
+                            COALESCE(SUM(te_amount), 0) as total_te,
+                            SUM(fee_collected) as total_collected
+                            FROM import_royalty_data
+                            GROUP BY batch_id, tax_year
+                            ORDER BY MAX(id) DESC")->fetchAll();
 
 require_once __DIR__ . "/../includes/header.php";
 ?>
 
-<div class="row mb-3 align-items-center">
+<div class="row mb-3">
     <div class="col-md-8">
-        <h2><i class="fas fa-calculator me-2 text-danger"></i> Royalty Fee TE</h2>
-        <p class="text-muted">Estimate revenue loss from natural resource fee incentives.</p>
+        <h2><i class="fas fa-calculator me-2 text-danger"></i> Royalty Fee TE Calculation</h2>
+        <p class="text-muted">Calculate and review Tax Expenditure for Natural Resource Royalty Fee batches.</p>
+    </div>
+    <div class="col-md-4 text-end"></div>
+</div>
+
+<?php if ($message): ?>
+<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm"><?= $message ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<?php endif; ?>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-primary text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_records) ?></div>
+            <div class="small opacity-75">Total Records</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-info text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_sale) ?></div>
+            <div class="small opacity-75">Total Sale Value</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-success text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_collected) ?></div>
+            <div class="small opacity-75">Total Collected</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-danger text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_te) ?></div>
+            <div class="small opacity-75">Total TE</div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white fw-bold"><i class="fas fa-layer-group me-2 text-secondary"></i> Import Batches</div>
+    <div class="card-body p-0">
+        <?php if (empty($batches)): ?>
+        <div class="p-5 text-center text-muted">
+            <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+            <h5>No Royalty Fee Data Found</h5>
+            <p>Import data from the <a href="import_royalty.php">Non-Tax &gt; Royalty Fee</a> page first.</p>
+        </div>
+        <?php else: ?>
+        <table class="table table-hover mb-0">
+            <thead class="table-light"><tr><th>Batch</th><th>Year</th><th>Records</th><th class="text-end">Sale Value</th><th class="text-end">TE Total</th><th>Actions</th></tr></thead>
+            <tbody>
+                <?php foreach ($batches as $b): ?>
+                <tr>
+                    <td><small class="font-monospace"><?= htmlspecialchars($b["batch_id"]) ?></small></td>
+                    <td><?= $b["tax_year"] ?></td>
+                    <td><span class="badge bg-primary rounded-pill px-3"><?= number_format($b["rows"]) ?></span></td>
+                    <td class="text-end fw-bold text-info"><?= number_format($b["total_sale"]) ?></td>
+                    <td class="text-end fw-bold text-danger"><?= number_format($b["total_te"]) ?></td>
+                    <td>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="calculate">
+                            <input type="hidden" name="batch_id" value="<?= htmlspecialchars($b["batch_id"]) ?>">
+                            <button class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></button>
+                        </form>
+                        <a href="?batch=<?= urlencode($b["batch_id"]) ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php
+// --- Batch Detail Mode ---
+else:
+    $stmt = $pdo->prepare("SELECT * FROM import_royalty_data WHERE batch_id = ? ORDER BY id ASC");
+    $stmt->execute([$batch]);
+    $rows = $stmt->fetchAll();
+
+    $total_records = count($rows);
+    $total_sale = array_sum(array_column($rows, 'electricity_sale_value'));
+    $total_te = array_sum(array_column($rows, 'te_amount'));
+    $total_collected = array_sum(array_column($rows, 'fee_collected'));
+
+    $years = $pdo->prepare("SELECT DISTINCT tax_year FROM import_royalty_data WHERE batch_id = ? ORDER BY tax_year DESC");
+    $years->execute([$batch]);
+    $year_list = $years->fetchAll(PDO::FETCH_COLUMN);
+
+require_once __DIR__ . "/../includes/header.php";
+?>
+
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h2><a href="te_royalty.php" class="text-dark text-decoration-none"><i class="fas fa-arrow-left me-2"></i></a> Royalty Fee TE: Batch Results</h2>
+        <p class="text-muted">Batch: <code><?= htmlspecialchars($batch) ?></code> — <strong><?= $total_records ?></strong> records</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <form method="POST" class="d-inline">
+            <input type="hidden" name="action" value="calculate">
+            <input type="hidden" name="batch_id" value="<?= htmlspecialchars($batch) ?>">
+            <button class="btn btn-success" id="runBtn"><i class="fas fa-calculator me-2"></i> Run TE Calculation</button>
+        </form>
     </div>
 </div>
 
 <?php if ($message): ?>
-<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm border-start border-4 border-<?= $msg_type ?>">
-    <?= $message ?>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
+<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm"><?= $message ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
 <?php endif; ?>
 
-<?php if (!empty($res["errors"]) && isset($res)): ?>
-<div class="alert alert-danger alert-dismissible fade show shadow-sm">
-    <strong><i class="fas fa-exclamation-triangle me-2"></i> Calculation Errors:</strong>
-    <ul class="mb-0 mt-2"><?php foreach ($res["errors"] as $err): ?>
-        <li><?= htmlspecialchars($err) ?></li>
-    <?php endforeach; ?></ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<?php endif; ?>
-
-<div class="row g-4">
-  <div class="col-md-3">
-    <div class="card shadow-sm border-0 h-100">
-      <div class="card-header bg-white fw-bold small text-uppercase text-muted">Recent Batches</div>
-      <div class="card-body p-2">
-        <?php if (empty($recent)): ?>
-            <div class="text-center py-4 text-muted small">No batches found</div>
-        <?php else: ?>
-            <?php foreach ($recent as $r): ?>
-            <div class="mb-2 p-2 rounded <?= $current_batch == $r['batch_id'] ? 'bg-light border border-danger' : 'border' ?>">
-                <div class="d-flex justify-content-between align-items-center">
-                    <a href="?batch=<?= urlencode($r['batch_id']) ?>" class="small fw-bold text-decoration-none text-danger"><?= substr($r['batch_id'], -14) ?> (<?= $r['tax_year'] ?>)</a>
-                    <?php if ($r['last_calc']): ?>
-                        <span class="badge bg-success rounded-pill" style="font-size: 0.6rem;">Calculated</span>
-                    <?php else: ?>
-                        <span class="badge bg-secondary rounded-pill" style="font-size: 0.6rem;">Pending</span>
-                    <?php endif; ?>
-                </div>
-                <div class="text-muted mt-1" style="font-size: 0.7rem;">
-                    <?= $r['rows'] ?> records • TE: <?= number_format($r['total_te'], 0) ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-      </div>
+<div class="row mb-3 g-2">
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-primary text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_records) ?></div>
+            <div class="small opacity-75">Records</div>
+        </div>
     </div>
-  </div>
-
-  <div class="col-md-9">
-    <?php if ($current_batch): ?>
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <h5 class="mb-1 fw-bold">Batch: <?= htmlspecialchars($current_batch) ?></h5>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <form method="POST" class="d-inline">
-                            <input type="hidden" name="batch_id" value="<?= htmlspecialchars($current_batch) ?>">
-                            <button type="submit" name="calculate_batch" class="btn <?= $is_calculated ? 'btn-outline-danger' : 'btn-danger' ?> text-white shadow-sm">
-                                <i class="fas <?= $is_calculated ? 'fa-sync-alt' : 'fa-play' ?> me-2"></i> 
-                                <?= $is_calculated ? 'Re-calculate' : 'Calculate TE' ?>
-                            </button>
-                        </form>
-                        <form method="POST" class="d-inline ms-2" onsubmit="return confirm('Clear calculation results?')">
-                            <input type="hidden" name="batch_id" value="<?= htmlspecialchars($current_batch) ?>">
-                            <button type="submit" name="clear_results" class="btn btn-outline-warning shadow-sm" title="Clear Results">
-                                <i class="fas fa-eraser"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <?php if ($is_calculated): ?>
-                    <div class="row g-3 mt-3">
-                        <div class="col-md-4">
-                            <div class="p-3 bg-light rounded border-start border-4 border-success">
-                                <div class="small text-muted text-uppercase fw-bold">Total TE Amount</div>
-                                <div class="h4 mb-0 fw-bold"><?= number_format($summary['total_te'], 2) ?></div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="p-3 bg-light rounded border-start border-4 border-info">
-                                <div class="small text-muted text-uppercase fw-bold">Total Collected</div>
-                                <div class="h4 mb-0 fw-bold"><?= number_format($summary['total_collected'], 2) ?></div>
-                            </div>
-                        </div>
-                    </div>
-                <?php endif; ?>
-            </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-info text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_sale) ?></div>
+            <div class="small opacity-75">Sale Value</div>
         </div>
-
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0 align-middle">
-                        <thead class="table-dark small">
-                            <tr>
-                                <th>TIN</th>
-                                <th class="text-end">Sale Value</th>
-                                <th class="text-end">Actual Rate</th>
-                                <th class="text-end">BM Rate</th>
-                                <th class="text-end text-warning">Benchmark Fee</th>
-                                <th class="text-end text-info">TE Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody class="small">
-                            <?php foreach ($records as $r): ?>
-                            <tr>
-                                <td class="fw-bold"><?= htmlspecialchars($r['tin']) ?></td>
-                                <td class="text-end"><?= number_format($r['electricity_sale_value'], 2) ?></td>
-                                <td class="text-end"><?= number_format($r['actual_rate'], 2) ?>%</td>
-                                <td class="text-end"><?= number_format($r['benchmark_rate'], 2) ?>%</td>
-                                <td class="text-end text-warning fw-bold"><?= number_format($r['benchmark_fee'], 2) ?></td>
-                                <td class="text-end text-primary fw-bold"><?= number_format($r['te_amount'], 2) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                        <?php if (!empty($records)): ?>
-                        <tfoot class="table-light fw-bold">
-                            <tr>
-                                <td colspan="2" class="text-end">BATCH TOTALS</td>
-                                <td class="text-end"><?= number_format(array_sum(array_column($records, "electricity_sale_value")), 2) ?></td>
-                                <td></td>
-                                <td class="text-end"><?= number_format(array_sum(array_column($records, "benchmark_fee")), 2) ?></td>
-                                <td class="text-end text-info"><?= $is_calculated ? number_format(array_sum(array_column($records, "te_amount")), 2) : '<span class="text-muted">—</span>' ?></td>
-                            </tr>
-                        </tfoot>
-                        <?php endif; ?>
-                    </table>
-                </div>
-            </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-success text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_collected) ?></div>
+            <div class="small opacity-75">Collected</div>
         </div>
-    <?php else: ?>
-        <div class="card shadow-sm border-0 border-top border-4 border-danger">
-            <div class="card-body p-5 text-center">
-                <i class="fas fa-folder-open fa-4x text-light mb-4"></i>
-                <h4>No Batch Selected</h4>
-                <p class="text-muted">Please select a royalty fee batch from the sidebar.</p>
-            </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm bg-danger text-white text-center py-3">
+            <div class="fs-5 fw-bold"><?= number_format($total_te) ?></div>
+            <div class="small opacity-75">TE Total</div>
         </div>
-    <?php endif; ?>
-  </div>
+    </div>
 </div>
 
-<?php require_once __DIR__ . "/../includes/footer.php"; ?>
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Search TIN</label>
+                <input type="text" id="customSearch" class="form-control" placeholder="Type to search...">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small fw-bold text-muted">Year</label>
+                <select id="filterYear" class="form-select">
+                    <option value="">All</option>
+                    <?php foreach ($year_list as $y): ?>
+                    <option value="<?= $y ?>"><?= $y ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()" title="Reset Filters"><i class="fas fa-undo"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <table id="teTable" class="table table-bordered table-hover w-100" style="font-size:0.85em">
+            <thead class="text-uppercase small">
+                <tr class="text-nowrap">
+                    <th>#</th>
+                    <th>Year</th>
+                    <th>TIN</th>
+                    <th class="text-end">Sale Value</th>
+                    <th class="text-end">Actual Rate</th>
+                    <th class="text-end">Fee Collected</th>
+                    <th class="text-end table-info">BM Rate</th>
+                    <th class="text-end table-info">Benchmark Fee</th>
+                    <th class="text-end table-danger">TE Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $i => $r): ?>
+                <tr>
+                    <td><?= $i + 1 ?></td>
+                    <td><?= $r["tax_year"] ?></td>
+                    <td class="font-monospace fw-bold"><?= htmlspecialchars($r["tin"]) ?></td>
+                    <td class="text-end"><?= number_format((float)$r["electricity_sale_value"], 2) ?></td>
+                    <td class="text-end"><?= number_format((float)$r["actual_rate"], 2) ?>%</td>
+                    <td class="text-end"><?= number_format((float)$r["fee_collected"], 2) ?></td>
+                    <td class="text-end fw-bold text-info"><?= number_format((float)$r["benchmark_rate"], 2) ?>%</td>
+                    <td class="text-end fw-bold text-info"><?= number_format((float)$r["benchmark_fee"], 2) ?></td>
+                    <td class="text-end fw-bold text-danger"><?= number_format((float)$r["te_amount"], 2) ?></td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (empty($rows)): ?>
+                <tr><td colspan="9" class="text-center p-4 text-muted">No records found for this batch.</td></tr>
+                <?php endif; ?>
+            </tbody>
+            <tfoot>
+                <tr class="table-warning fw-bold">
+                    <td colspan="7" class="text-end">Total (LAK):</td>
+                    <td class="text-end text-info"><?= number_format(array_sum(array_column($rows, 'benchmark_fee')), 2) ?></td>
+                    <td class="text-end text-danger"><?= number_format($total_te, 2) ?></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = $('#teTable').DataTable({
+        dom: 'rtip',
+        pageLength: 50,
+        order: [],
+        columnDefs: [{ targets: '_all', className: 'dt-body-left' }]
+    });
+
+    document.getElementById('customSearch').addEventListener('keyup', function() {
+        table.search(this.value).draw();
+    });
+    document.getElementById('filterYear').addEventListener('change', function() {
+        table.column(1).search(this.value).draw();
+    });
+});
+
+function resetFilters() {
+    document.getElementById('customSearch').value = '';
+    document.getElementById('filterYear').value = '';
+    $('#teTable').DataTable().search('').columns().search('').draw();
+}
+
+document.getElementById('runBtn')?.addEventListener('click', function() {
+    this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
+    this.disabled = true;
+});
+</script>
+<style>
+table.dataTable td { padding: 6px 8px !important; vertical-align: middle; }
+table.dataTable thead th { padding: 8px 6px !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.dataTables_info { font-size: 0.8rem; padding: 8px 12px !important; }
+.dataTables_paginate { padding: 8px 12px !important; }
+</style>
+
+<?php
+endif;
+require_once __DIR__ . "/../includes/footer.php";
