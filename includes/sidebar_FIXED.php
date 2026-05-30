@@ -115,14 +115,14 @@
 
     <!-- Get Tax Data by Import from Excel -->
     <?php 
-        $is_molsw = (strpos($cur, 'molsw') !== false);
-        $is_lse = (strpos($cur, 'lse') !== false);
-        $is_sezo = (strpos($cur, 'sezo') !== false);
-        $is_moic = (strpos($cur, 'moic') !== false);
-        $is_mpi = (strpos($cur, 'mpi') !== false);
-        $is_taxris = (strpos($cur, 'taxris') !== false);
+        $is_molsw = (strpos($cur, 'molsw') !== false && strpos($cur, 'api_') === false);
+        $is_lse = (strpos($cur, 'lse') !== false && strpos($cur, 'api_') === false);
+        $is_sezo = (strpos($cur, 'sezo') !== false && strpos($cur, 'api_') === false);
+        $is_moic = (strpos($cur, 'moic') !== false && strpos($cur, 'api_') === false);
+        $is_mpi = (strpos($cur, 'mpi') !== false && strpos($cur, 'api_') === false);
+        $is_taxris = (strpos($cur, 'taxris') !== false && strpos($cur, 'api_') === false);
         $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi || $is_taxris);
-        $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req) || (strpos($cur, 'asycuda_') !== false);
+        $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req) || (strpos($cur, 'asycuda_') !== false && strpos($cur, 'api_') === false);
         $is_import_excel = ($is_data_req || $is_import_te);
     ?>
     <li class="<?= $is_import_excel ? 'active' : '' ?>">
@@ -182,6 +182,30 @@
             <li class="<?= $cur == 'import_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
           </ul>
         </li>
+      </ul>
+    </li>
+
+    <!-- Get Tax Data by API -->
+    <?php 
+        $is_api_moic = ($cur == 'api_moic.php');
+        $is_api_mpi = ($cur == 'api_mpi.php');
+        $is_api_taxris = ($cur == 'api_taxris.php');
+        $is_api_asycuda = ($cur == 'api_asycuda.php');
+        $is_api_sezo = ($cur == 'api_sezo.php');
+        $is_api_lse = ($cur == 'api_lse.php');
+        $is_api = ($is_api_moic || $is_api_mpi || $is_api_taxris || $is_api_asycuda || $is_api_sezo || $is_api_lse);
+    ?>
+    <li class="<?= $is_api ? 'active' : '' ?>">
+      <a href="#apiSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_api ? 'true' : 'false' ?>">
+        <i class="fas fa-cloud-download-alt me-2"></i> Get Tax Data by API
+      </a>
+      <ul class="collapse list-unstyled <?= $is_api ? 'show' : '' ?>" id="apiSub">
+        <li class="<?= $is_api_moic ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/api_moic.php"><i class="fas fa-building me-2"></i>MOIC</a></li>
+        <li class="<?= $is_api_mpi ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/api_mpi.php"><i class="fas fa-chart-line me-2"></i>MPI</a></li>
+        <li class="<?= $is_api_taxris ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/api_taxris.php"><i class="fas fa-file-invoice-dollar me-2"></i>TaxRIS</a></li>
+        <li class="<?= $is_api_asycuda ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/api_asycuda.php"><i class="fas fa-ship me-2"></i>ASYCUDA</a></li>
+        <li class="<?= $is_api_sezo ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/api_sezo.php"><i class="fas fa-industry me-2"></i>SEZO</a></li>
+        <li class="<?= $is_api_lse ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/api_lse.php"><i class="fas fa-chart-line me-2"></i>Lao Stock Exchange</a></li>
       </ul>
     </li>
 

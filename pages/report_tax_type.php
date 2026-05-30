@@ -1,70 +1,110 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
-require_once __DIR__ . "/../includes/header.php";
+
+$is_export = isset($_GET['export']);
+
+if (!$is_export) {
+    require_once __DIR__ . "/../includes/header.php";
+}
 
 $pdo = getDbConnection();
 
 // Initialize data containers
 $profit_data = [];
 $pit_data = [];
+$salary_data = [];
 $vat_domestic_data = [];
 $customs_data = [];
 $excise_data = [];
 $vat_import_data = [];
+$sez_dev_data = [];
+$sez_inv_data = [];
+$resource_data = [];
+$royalty_data = [];
+$land_concession_data = [];
 $annual_years = [];
 
 try {
-    // 1. Profit Tax (CIT) - Ensure year > 0
+    // 1. Profit Tax (CIT)
     $stmt = $pdo->query("SELECT c.tax_year, SUM(r.profit_tax_te) as total_te FROM companies c JOIN te_profit_result r ON r.company_id = c.id WHERE c.tax_year > 0 GROUP BY c.tax_year");
     $profit_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // 2. Individual Tax (PIT) - Ensure year > 0
+    // 2. Individual Tax (PIT)
     $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM te_individual_result WHERE tax_year > 0 GROUP BY tax_year");
     $pit_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // 3. Value Added Tax (Domestic) - Ensure valid year
+    // 3. Salary Tax
+    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_salary_tax_data WHERE tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
+    $salary_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 4. Domestic Value Added Tax (VAT)
     $stmt = $pdo->query("SELECT YEAR(filing_period) as yr, SUM(expert_te) as total_te FROM import_vat_data WHERE filing_period IS NOT NULL AND filing_period != '0000-00-00' GROUP BY yr HAVING yr > 0");
     $vat_domestic_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // 4. Customs Duty (ASYCUDA)
+    // 5. Customs Duty (ASYCUDA)
     $stmt = $pdo->query("SELECT YEAR(COALESCE(NULLIF(ai.receipt_date, '0000-00-00'), NULLIF(ai.assess_date, '0000-00-00'), ai.doc_date)) as yr, SUM(r.customs_te) as total_te 
                          FROM te_asycuda_result r 
                          JOIN asycuda_imports ai ON r.asycuda_id = ai.id 
                          GROUP BY yr HAVING yr > 0");
     $customs_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // 5. Excise Tax (ASYCUDA)
+    // 6. Excise Tax (ASYCUDA)
     $stmt = $pdo->query("SELECT YEAR(COALESCE(NULLIF(ai.receipt_date, '0000-00-00'), NULLIF(ai.assess_date, '0000-00-00'), ai.doc_date)) as yr, SUM(r.excise_te) as total_te 
                          FROM te_asycuda_result r 
                          JOIN asycuda_imports ai ON r.asycuda_id = ai.id 
                          GROUP BY yr HAVING yr > 0");
     $excise_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // 6. Import VAT (ASYCUDA)
+    // 7. Import VAT (ASYCUDA)
     $stmt = $pdo->query("SELECT YEAR(COALESCE(NULLIF(ai.receipt_date, '0000-00-00'), NULLIF(ai.assess_date, '0000-00-00'), ai.doc_date)) as yr, SUM(r.vat_te) as total_te 
                          FROM te_asycuda_result r 
                          JOIN asycuda_imports ai ON r.asycuda_id = ai.id 
                          GROUP BY yr HAVING yr > 0");
     $vat_import_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
+    // 8. SEZ Developer
+    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_sez_data WHERE type = 'Developer' AND tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
+    $sez_dev_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 9. SEZ Investor
+    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_sez_data WHERE type = 'Investor' AND tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
+    $sez_inv_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 10. Resource Fee (Non-Tax)
+    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_resource_data WHERE tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
+    $resource_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 11. Royalty Fee (Non-Tax)
+    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_royalty_data WHERE tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
+    $royalty_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 12. Land Concession (Non-Tax)
+    $stmt = $pdo->query("SELECT c.tax_year, SUM(r.te_land_concession) as total_te FROM companies c JOIN te_land_concession_result r ON r.company_id = c.id WHERE c.tax_year > 0 GROUP BY c.tax_year");
+    $land_concession_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
     // Collect all unique years and filter out null/0/invalid
     $raw_years = array_unique(array_merge(
         array_keys($profit_data),
         array_keys($pit_data),
+        array_keys($salary_data),
         array_keys($vat_domestic_data),
         array_keys($customs_data),
         array_keys($excise_data),
-        array_keys($vat_import_data)
+        array_keys($vat_import_data),
+        array_keys($sez_dev_data),
+        array_keys($sez_inv_data),
+        array_keys($resource_data),
+        array_keys($royalty_data),
+        array_keys($land_concession_data)
     ));
     
     $annual_years = array_filter($raw_years, function($y) {
-        return is_numeric($y) && $y > 1900 && $y < 2100; // Reasonable range
+        return is_numeric($y) && $y > 1900 && $y < 2100;
     });
     sort($annual_years);
 
 } catch (Exception $e) {
-    // Basic error handling for the UI
     echo '<div class="alert alert-danger">Error aggregating data: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 
@@ -73,11 +113,80 @@ if (empty($annual_years)) { $annual_years = [date("Y")]; }
 $tax_types = [
     'Corporate Income Tax (Profit Tax)' => $profit_data,
     'Individual Income Tax (PIT)'       => $pit_data,
+    'Salary Tax'                        => $salary_data,
     'Domestic Value Added Tax (VAT)'    => $vat_domestic_data,
     'Customs Duty (Import)'             => $customs_data,
     'Excise Tax (Import)'               => $excise_data,
-    'Import Value Added Tax (VAT)'      => $vat_import_data
+    'Import Value Added Tax (VAT)'      => $vat_import_data,
+    'SEZ Developer'                     => $sez_dev_data,
+    'SEZ Investor'                      => $sez_inv_data,
+    'Resource Fee (Non-Tax)'            => $resource_data,
+    'Royalty Fee (Non-Tax)'             => $royalty_data,
+    'Land Concession (Non-Tax)'         => $land_concession_data
 ];
+
+// Export to Excel
+if ($is_export) {
+    require __DIR__ . '/../vendor/autoload.php';
+
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('TE by Tax Type');
+
+    $sheet->setCellValue('A1', 'Tax Type Category');
+    $col = 'B';
+    foreach ($annual_years as $year) {
+        $sheet->setCellValue($col . '1', $year);
+        $col++;
+    }
+
+    $headerStyle = [
+        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
+        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '4472C4']],
+        'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
+        'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+    ];
+    $sheet->getStyle('A1:' . $col . '1')->applyFromArray($headerStyle);
+
+    $rowIdx = 2;
+    foreach ($tax_types as $type => $data) {
+        $sheet->setCellValue('A' . $rowIdx, $type);
+        $sheet->getStyle('A' . $rowIdx)->getFont()->setBold(true);
+        $col = 'B';
+        foreach ($annual_years as $year) {
+            $val = $data[$year] ?? 0;
+            $sheet->setCellValue($col . $rowIdx, $val > 0 ? $val : '');
+            $sheet->getStyle($col . $rowIdx)->getNumberFormat()->setFormatCode('#,##0');
+            $col++;
+        }
+        $rowIdx++;
+    }
+
+    $sheet->setCellValue('A' . $rowIdx, 'Total Revenue Foregone');
+    $sheet->getStyle('A' . $rowIdx)->getFont()->setBold(true);
+    $col = 'B';
+    foreach ($annual_years as $year) {
+        $total = 0;
+        foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
+        $sheet->setCellValue($col . $rowIdx, $total > 0 ? $total : '');
+        $sheet->getStyle($col . $rowIdx)->getNumberFormat()->setFormatCode('#,##0');
+        $col++;
+    }
+    $lastCol = chr(65 + count($annual_years));
+    $sheet->getStyle('A' . $rowIdx . ':' . $lastCol . $rowIdx)
+        ->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->setStartColor(new \PhpOffice\PhpSpreadsheet\Style\Color('D9E2F3'));
+
+    foreach (range('A', $lastCol) as $c) {
+        $sheet->getColumnDimension($c)->setAutoSize(true);
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="TE_by_Tax_Type.xlsx"');
+    header('Cache-Control: max-age=0');
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
 ?>
 <div class="row mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center">
@@ -86,12 +195,14 @@ $tax_types = [
       <p class="text-muted">Consolidated summary of tax expenditures across all tax regimes and years.</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</button>
-      <button class="btn btn-primary" onclick="location.reload()"><i class="fas fa-sync-alt me-1"></i> Update Data</button>
+      <a href="?export=1" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
+      <button type="button" class="btn btn-danger" id="exportPdfBtn"><i class="fas fa-file-pdf me-1"></i> Export PDF</button>
+      <a href="recalculate_all.php" class="btn btn-primary"><i class="fas fa-sync-alt me-1"></i> Update Data</a>
     </div>
   </div>
 </div>
 
+<div id="reportContent">
 <div class="card shadow-sm mb-4" style="border-radius: 12px;">
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -138,8 +249,322 @@ $tax_types = [
   </div>
 </div>
 
+</div> <!-- /reportContent -->
+
 <div class="alert bg-light border text-muted small">
     <i class="fas fa-info-circle me-2"></i> <strong>Note:</strong> This report aggregates real-time data from result tables for CIT and PIT, while Domestic VAT and ASYCUDA data are pulled from their respective import/assessment modules. Click <strong>"Update Data"</strong> to refresh calculations if new imports have been processed.
 </div>
+
+<style>
+.chart-type-btn.active { background-color: var(--bs-primary) !important; color: #fff !important; border-color: var(--bs-primary) !important; }
+.pie-chart-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.5rem; }
+</style>
+
+<!-- Chart Section -->
+<div class="card shadow-sm mb-4" style="border-radius: 12px;">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0 fw-bold"><i class="fas fa-chart-line me-2"></i> TE Trend Visualization</h5>
+      <div class="btn-group btn-group-sm" role="group">
+        <button type="button" class="btn btn-outline-primary chart-type-btn active" data-type="line" title="Line Chart">
+          <i class="fas fa-chart-line"></i>
+        </button>
+        <button type="button" class="btn btn-outline-primary chart-type-btn" data-type="bar" title="Bar Chart">
+          <i class="fas fa-chart-bar"></i>
+        </button>
+        <button type="button" class="btn btn-outline-primary chart-type-btn" data-type="pie" title="Pie Chart">
+          <i class="fas fa-chart-pie"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="chartContainer" style="display: block;">
+      <canvas id="teResultByTypeChart" height="220"></canvas>
+    </div>
+
+    <div id="pieChartsContainer" class="row g-3" style="display: none;"></div>
+  </div>
+</div>
+
+<script>
+var chartData = <?= json_encode(array_map(function($type, $data) use ($annual_years) {
+    $row = ['tax_type_name' => $type];
+    foreach ($annual_years as $year) {
+        $row[(string)$year] = (float)($data[$year] ?? 0);
+    }
+    return $row;
+}, array_keys($tax_types), array_values($tax_types))) ?>;
+var chartYears = <?= json_encode(array_map('intval', $annual_years)) ?>;
+
+(function() {
+    var chart = null;
+    var pieCharts = [];
+    var currentChartType = 'line';
+
+    var colors = ['#3b82f6','#ef4444','#10b981','#f59e42','#a78bfa','#f472b6','#facc15','#38bdf8','#6366f1','#eab308','#14b8a6','#f43f5e'];
+
+    function getColor(idx) { return colors[idx % colors.length]; }
+
+    function formatValue(v) {
+        if (Math.abs(v) >= 1e12) return (v / 1e12).toFixed(1) + 'T';
+        if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+        if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+        if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+        return v.toFixed(0);
+    }
+
+    function renderChart() {
+        if (chart) { chart.destroy(); chart = null; }
+        pieCharts.forEach(function(c) { c.destroy(); });
+        pieCharts = [];
+
+        var filteredData = chartData.filter(function(d) {
+            return chartYears.some(function(y) { return Math.abs(d[y]) > 0; });
+        });
+        if (filteredData.length === 0) filteredData = chartData;
+
+        if (currentChartType === 'line') {
+            document.getElementById('chartContainer').style.display = 'block';
+            document.getElementById('pieChartsContainer').style.display = 'none';
+            document.getElementById('pieChartsContainer').innerHTML = '';
+
+            var datasets = filteredData.map(function(d, i) { return {
+                label: d.tax_type_name,
+                data: chartYears.map(function(y) { return d[y] || 0; }),
+                borderColor: getColor(i),
+                backgroundColor: getColor(i),
+                fill: false,
+                tension: 0.2,
+                spanGaps: true
+            }; });
+
+            chart = new Chart(document.getElementById('teResultByTypeChart'), {
+                type: 'line',
+                data: { labels: chartYears, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+                        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + Number(ctx.raw).toLocaleString(); } } }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Year', font: { size: 11 } }, ticks: { font: { size: 11 } } },
+                        y: { beginAtZero: true, ticks: { callback: function(v) { return formatValue(v); }, font: { size: 11 } } }
+                    }
+                }
+            });
+        } else if (currentChartType === 'bar') {
+            document.getElementById('chartContainer').style.display = 'block';
+            document.getElementById('pieChartsContainer').style.display = 'none';
+            document.getElementById('pieChartsContainer').innerHTML = '';
+
+            var datasets = chartYears.map(function(y, i) { return {
+                label: String(y),
+                data: filteredData.map(function(d) { return d[y] || 0; }),
+                backgroundColor: getColor(i)
+            }; });
+
+            chart = new Chart(document.getElementById('teResultByTypeChart'), {
+                type: 'bar',
+                data: { labels: filteredData.map(function(d) { return d.tax_type_name; }), datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+                        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + Number(ctx.raw).toLocaleString(); } } }
+                    },
+                    scales: {
+                        x: { ticks: { font: { size: 10 } } },
+                        y: { beginAtZero: true, ticks: { callback: function(v) { return formatValue(v); }, font: { size: 11 } } }
+                    }
+                }
+            });
+        } else if (currentChartType === 'pie') {
+            document.getElementById('chartContainer').style.display = 'none';
+            document.getElementById('pieChartsContainer').style.display = 'flex';
+            document.getElementById('pieChartsContainer').innerHTML = '';
+
+            chartYears.forEach(function(year) {
+                var yearData = filteredData.map(function(d) { return { label: d.tax_type_name, value: d[year] || 0 }; })
+                    .filter(function(item) { return item.value > 0; });
+                if (yearData.length === 0) return;
+
+                var col = document.createElement('div');
+                col.className = 'col-lg-4 col-md-6 col-sm-12';
+
+                var container = document.createElement('div');
+                container.className = 'pie-chart-container';
+
+                var canvas = document.createElement('canvas');
+                container.appendChild(canvas);
+                col.appendChild(container);
+                document.getElementById('pieChartsContainer').appendChild(col);
+
+                var pChart = new Chart(canvas, {
+                    type: 'pie',
+                    data: {
+                        labels: yearData.map(function(item) { return item.label; }),
+                        datasets: [{
+                            data: yearData.map(function(item) { return item.value; }),
+                            backgroundColor: yearData.map(function(_, idx) { return getColor(idx); })
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'right', labels: { boxWidth: 10, padding: 6, font: { size: 10 } } },
+                            title: { display: true, text: 'Year ' + year, font: { size: 12 } },
+                            tooltip: { callbacks: { label: function(ctx) {
+                                var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var pct = ((ctx.raw / total) * 100).toFixed(1);
+                                return ctx.label + ': ' + Number(ctx.raw).toLocaleString() + ' (' + pct + '%)';
+                            } } }
+                        }
+                    }
+                });
+                pieCharts.push(pChart);
+            });
+        }
+    }
+
+    function setChartType(type) {
+        currentChartType = type;
+        document.querySelectorAll('.chart-type-btn').forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-type') === type);
+        });
+        renderChart();
+    }
+
+    window.switchChartType = function(type) {
+        return new Promise(function(resolve) {
+            setChartType(type);
+            // Chart.js default animation is 1000ms, wait for it with a buffer
+            setTimeout(resolve, 1200);
+        });
+    };
+
+    document.querySelectorAll('.chart-type-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            setChartType(this.getAttribute('data-type'));
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', renderChart);
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+document.getElementById('exportPdfBtn')?.addEventListener('click', function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Generating PDF...';
+    var margin = 10;
+
+    function captureCanvas(cvs, maxW, maxH) {
+        var ctx = cvs.getContext('2d');
+        if (ctx) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.restore();
+        }
+        var ar = cvs.width / cvs.height;
+        var w = maxW;
+        var h = maxW / ar;
+        if (h > maxH) { h = maxH; w = h * ar; }
+        return { data: cvs.toDataURL('image/png'), w: w, h: h };
+    }
+
+    var tableCard = document.querySelector('#reportContent > .card');
+    if (!tableCard) { alert('Report content not found.'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf me-1"></i> Export PDF'; return; }
+
+    // Step 1: Capture the table
+    html2canvas(tableCard, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false }).then(function(tableCanvas) {
+        var pdf = new jspdf.jsPDF('l', 'mm', 'a3');
+        var pw = pdf.internal.pageSize.getWidth();
+        var ph = pdf.internal.pageSize.getHeight();
+
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Revenue Foregone from Tax Expenditure (Kip)', pw / 2, margin + 6, { align: 'center' });
+
+        var tw = pw - margin * 2;
+        var th = (tableCanvas.height / tableCanvas.width) * tw;
+        if (th > ph - 30) th = ph - 30;
+        pdf.addImage(tableCanvas.toDataURL('image/png'), 'PNG', margin, 22, tw, th);
+
+        // Step 2: Capture all 3 chart types sequentially
+        var chartConfigs = [
+            { type: 'line', title: 'TE Trend by Tax Type (Line Chart)', pageTitle: true },
+            { type: 'bar', title: 'TE by Tax Type (Bar Chart)', pageTitle: true },
+            { type: 'pie', title: 'TE Distribution by Year', pageTitle: true }
+        ];
+
+        function captureChart(idx) {
+            if (idx >= chartConfigs.length) {
+                pdf.save('TE_by_Tax_Type.pdf');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-file-pdf me-1"></i> Export PDF';
+                return;
+            }
+
+            var cfg = chartConfigs[idx];
+            window.switchChartType(cfg.type).then(function() {
+                setTimeout(function() {
+                    pdf.addPage();
+                    var y = margin;
+
+                    pdf.setFontSize(14);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.text(cfg.title, pw / 2, y + 6, { align: 'center' });
+                    y += 14;
+
+                    if (cfg.type === 'pie') {
+                        var pies = document.querySelectorAll('#pieChartsContainer canvas');
+                        if (pies.length === 0) { captureChart(idx + 1); return; }
+                        var itemsPerRow = 3;
+                        var cw = (pw - margin * (itemsPerRow + 1)) / itemsPerRow;
+                        var col = 0;
+                        var maxRowH = 0;
+
+                        pies.forEach(function(cvs) {
+                            if (col === 0 && maxRowH > 0) { y += maxRowH + 6; maxRowH = 0; }
+                            if (y + 70 > ph) { pdf.addPage(); y = margin + 10; }
+
+                            var cp = captureCanvas(cvs, cw, 90);
+                            pdf.addImage(cp.data, 'JPEG', margin + col * (cw + margin), y, cp.w, cp.h);
+                            maxRowH = Math.max(maxRowH, cp.h);
+                            col++;
+                            if (col >= itemsPerRow) { col = 0; y += maxRowH + 6; maxRowH = 0; }
+                        });
+                    } else {
+                        var mainCvs = document.getElementById('teResultByTypeChart');
+                        if (mainCvs) {
+                            var cp = captureCanvas(mainCvs, pw - margin * 2, 140);
+                            var cx = (pw - cp.w) / 2;
+                            pdf.addImage(cp.data, 'JPEG', cx, y, cp.w, cp.h);
+                        }
+                    }
+
+                    captureChart(idx + 1);
+                }, 200);
+            });
+        }
+
+        captureChart(0);
+    }).catch(function(err) {
+        console.error('PDF failed:', err);
+        alert('Failed to generate PDF. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-pdf me-1"></i> Export PDF';
+    });
+});
+</script>
 
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>
