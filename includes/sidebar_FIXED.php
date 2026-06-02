@@ -296,5 +296,17 @@
         </li>
       </ul>
     </li>
+
+    <!-- Notification -->
+    <?php $is_notif = ($cur == 'notification_mgmt.php' || $cur == 'repo_milestones.php'); ?>
+    <li class="<?= $is_notif ? 'active' : '' ?>">
+      <a href="#notificationSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_notif ? 'true' : 'false' ?>">
+        <i class="fas fa-bell me-2"></i> Notification
+      </a>
+      <ul class="collapse list-unstyled <?= $is_notif ? 'show' : '' ?>" id="notificationSub">
+        <li class="<?= $cur == 'repo_milestones.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/repo_milestones.php">Concession Compliance</a></li>
+        <li class="<?= $cur == 'notification_mgmt.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/notification_mgmt.php">Notification Management</a></li>
+      </ul>
+    </li>
   </ul>
 </nav>

@@ -12,6 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare("INSERT INTO bm_profit_standard (start_year, end_year, category, rate_percentage) VALUES (?, ?, ?, ?)");
             $stmt->execute([$_POST['start_year'], $_POST['end_year'], $_POST['category'], $_POST['rate_percentage']]);
             $message = "Standard rate added successfully.";
+        } elseif ($_POST['action'] == 'edit_standard') {
+            $stmt = $pdo->prepare("UPDATE bm_profit_standard SET start_year=?, end_year=?, category=?, rate_percentage=? WHERE id=?");
+            $stmt->execute([$_POST['start_year'], $_POST['end_year'], $_POST['category'], $_POST['rate_percentage'], $_POST['id']]);
+            $message = "Standard rate updated successfully.";
         } elseif ($_POST['action'] == 'delete_standard') {
             $pdo->prepare("DELETE FROM bm_profit_standard WHERE id = ?")->execute([$_POST['id']]);
             $message = "Rule deleted.";
@@ -19,6 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare("INSERT INTO bm_profit_mandatory (start_year, end_year, sector, sub_sector, profit_base_rate) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$_POST['start_year'], $_POST['end_year'], $_POST['sector'], $_POST['sub_sector'], $_POST['profit_base_rate']]);
             $message = "Mandatory rate added.";
+        } elseif ($_POST['action'] == 'edit_mandatory') {
+            $stmt = $pdo->prepare("UPDATE bm_profit_mandatory SET start_year=?, end_year=?, sector=?, sub_sector=?, profit_base_rate=? WHERE id=?");
+            $stmt->execute([$_POST['start_year'], $_POST['end_year'], $_POST['sector'], $_POST['sub_sector'], $_POST['profit_base_rate'], $_POST['id']]);
+            $message = "Mandatory rate updated.";
         } elseif ($_POST['action'] == 'delete_mandatory') {
             $pdo->prepare("DELETE FROM bm_profit_mandatory WHERE id = ?")->execute([$_POST['id']]);
             $message = "Rule deleted.";
@@ -26,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare("INSERT INTO bm_profit_sme (start_year, end_year, sector, turnover_min, turnover_max, rate_percentage) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([$_POST['start_year'], $_POST['end_year'], $_POST['sector'], $_POST['turnover_min'], $_POST['turnover_max'] ?: null, $_POST['rate_percentage']]);
             $message = "SME rate added.";
+        } elseif ($_POST['action'] == 'edit_sme') {
+            $stmt = $pdo->prepare("UPDATE bm_profit_sme SET start_year=?, end_year=?, sector=?, turnover_min=?, turnover_max=?, rate_percentage=? WHERE id=?");
+            $stmt->execute([$_POST['start_year'], $_POST['end_year'], $_POST['sector'], $_POST['turnover_min'], $_POST['turnover_max'] ?: null, $_POST['rate_percentage'], $_POST['id']]);
+            $message = "SME rate updated.";
         } elseif ($_POST['action'] == 'delete_sme') {
             $pdo->prepare("DELETE FROM bm_profit_sme WHERE id = ?")->execute([$_POST['id']]);
             $message = "Rule deleted.";
@@ -76,7 +88,7 @@ require_once __DIR__ . '/../includes/header.php';
       <div class="tab-pane fade show active" id="stdPane">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Standard Profit Tax Rates</h5>
-          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStdModal"><i class="fas fa-plus me-1"></i> Add</button>
+           <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStdModal"><i class="fas fa-plus me-1"></i> Add Record</button>
         </div>
         <table class="table table-bordered table-hover datatable w-100">
           <thead class="table-light"><tr><th>Period</th><th>Category</th><th>Rate (%)</th><th>Action</th></tr></thead>
@@ -87,6 +99,7 @@ require_once __DIR__ . '/../includes/header.php';
               <td><span class="badge bg-secondary"><?= htmlspecialchars($r['category']) ?></span></td>
               <td class="fw-bold"><?= $r['rate_percentage'] ?>%</td>
               <td>
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editStdModal<?= $r['id'] ?>"><i class="fas fa-edit"></i></button>
                 <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
                   <input type="hidden" name="action" value="delete_standard">
                   <input type="hidden" name="id" value="<?= $r['id'] ?>">
@@ -102,7 +115,7 @@ require_once __DIR__ . '/../includes/header.php';
       <div class="tab-pane fade" id="mandPane">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Profit Base Rates (Non-VAT Holders)</h5>
-          <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addMandModal"><i class="fas fa-plus me-1"></i> Add</button>
+           <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addMandModal"><i class="fas fa-plus me-1"></i> Add Record</button>
         </div>
         <table class="table table-bordered table-hover datatable w-100">
           <thead class="table-light"><tr><th>Period</th><th>Sector</th><th>Sub-Sector</th><th>Profit Base Rate (%)</th><th>Action</th></tr></thead>
@@ -114,6 +127,7 @@ require_once __DIR__ . '/../includes/header.php';
               <td><?= htmlspecialchars($r['sub_sector']) ?></td>
               <td class="fw-bold"><?= $r['profit_base_rate'] ?>%</td>
               <td>
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editMandModal<?= $r['id'] ?>"><i class="fas fa-edit"></i></button>
                 <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
                   <input type="hidden" name="action" value="delete_mandatory">
                   <input type="hidden" name="id" value="<?= $r['id'] ?>">
@@ -129,7 +143,7 @@ require_once __DIR__ . '/../includes/header.php';
       <div class="tab-pane fade" id="smePane">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">SME / Micro Enterprise Rates</h5>
-          <button class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#addSmeModal"><i class="fas fa-plus me-1"></i> Add</button>
+           <button class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#addSmeModal"><i class="fas fa-plus me-1"></i> Add Record</button>
         </div>
         <table class="table table-bordered table-hover datatable w-100">
           <thead class="table-light"><tr><th>Period</th><th>Sector</th><th>Turnover Range (LAK)</th><th>Rate (%)</th><th>Action</th></tr></thead>
@@ -141,6 +155,7 @@ require_once __DIR__ . '/../includes/header.php';
               <td><?= number_format($r['turnover_min']) ?> - <?= $r['turnover_max'] ? number_format($r['turnover_max']) : 'Any' ?></td>
               <td class="fw-bold"><?= $r['rate_percentage'] ?>%</td>
               <td>
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editSmeModal<?= $r['id'] ?>"><i class="fas fa-edit"></i></button>
                 <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
                   <input type="hidden" name="action" value="delete_sme">
                   <input type="hidden" name="id" value="<?= $r['id'] ?>">
@@ -220,5 +235,50 @@ require_once __DIR__ . '/../includes/header.php';
     </form>
   </div></div>
 </div>
+
+
+<!-- Edit Standard Modals -->
+<?php foreach ($std as $r): ?>
+<div class="modal fade" id="editStdModal<?= $r['id'] ?>" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<form method="POST"><input type="hidden" name="action" value="edit_standard"><input type="hidden" name="id" value="<?= $r['id'] ?>">
+<div class="modal-header bg-primary text-white"><h5 class="modal-title">Edit Standard PT Rate</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+<div class="row mb-3"><div class="col-6"><label>Start Year</label><input type="number" name="start_year" class="form-control" required value="<?= $r['start_year'] ?>"></div><div class="col-6"><label>End Year</label><input type="number" name="end_year" class="form-control" required value="<?= $r['end_year'] ?>"></div></div>
+<div class="mb-3"><label>Category</label><select name="category" class="form-select" required><option <?= $r['category']=='Standard'?'selected':'' ?>>Standard</option><option <?= $r['category']=='Tobacco'?'selected':'' ?>>Tobacco</option><option <?= $r['category']=='Mining/Electricity'?'selected':'' ?>>Mining / Electricity</option></select></div>
+<div class="mb-3"><label>Rate (%)</label><input type="number" step="0.01" name="rate_percentage" class="form-control" required value="<?= $r['rate_percentage'] ?>"></div>
+</div>
+<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="submit" class="btn btn-primary">Update</button></div>
+</form></div></div></div>
+<?php endforeach; ?>
+
+<!-- Edit Mandatory Modals -->
+<?php foreach ($mand as $r): ?>
+<div class="modal fade" id="editMandModal<?= $r['id'] ?>" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<form method="POST"><input type="hidden" name="action" value="edit_mandatory"><input type="hidden" name="id" value="<?= $r['id'] ?>">
+<div class="modal-header bg-warning"><h5 class="modal-title">Edit Profit Base Rate</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+<div class="row mb-3"><div class="col-6"><label>Start Year</label><input type="number" name="start_year" class="form-control" required value="<?= $r['start_year'] ?>"></div><div class="col-6"><label>End Year</label><input type="number" name="end_year" class="form-control" required value="<?= $r['end_year'] ?>"></div></div>
+<div class="mb-3"><label>Sector</label><input type="text" name="sector" class="form-control" required value="<?= htmlspecialchars($r['sector']) ?>"></div>
+<div class="mb-3"><label>Sub-Sector (Optional)</label><input type="text" name="sub_sector" class="form-control" value="<?= htmlspecialchars($r['sub_sector']) ?>"></div>
+<div class="mb-3"><label>Profit Base Rate (%)</label><input type="number" step="0.01" name="profit_base_rate" class="form-control" required value="<?= $r['profit_base_rate'] ?>"></div>
+</div>
+<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="submit" class="btn btn-warning">Update</button></div>
+</form></div></div></div>
+<?php endforeach; ?>
+
+<!-- Edit SME Modals -->
+<?php foreach ($sme as $r): ?>
+<div class="modal fade" id="editSmeModal<?= $r['id'] ?>" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<form method="POST"><input type="hidden" name="action" value="edit_sme"><input type="hidden" name="id" value="<?= $r['id'] ?>">
+<div class="modal-header bg-info text-white"><h5 class="modal-title">Edit SME Rate</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+<div class="row mb-3"><div class="col-6"><label>Start Year</label><input type="number" name="start_year" class="form-control" required value="<?= $r['start_year'] ?>"></div><div class="col-6"><label>End Year</label><input type="number" name="end_year" class="form-control" required value="<?= $r['end_year'] ?>"></div></div>
+<div class="mb-3"><label>Sector</label><input type="text" name="sector" class="form-control" required value="<?= htmlspecialchars($r['sector']) ?>"></div>
+<div class="row mb-3"><div class="col-6"><label>Min Turnover (LAK)</label><input type="number" name="turnover_min" class="form-control" required value="<?= $r['turnover_min'] ?>"></div><div class="col-6"><label>Max Turnover (blank=Any)</label><input type="number" name="turnover_max" class="form-control" value="<?= $r['turnover_max'] ?>"></div></div>
+<div class="mb-3"><label>Rate (%)</label><input type="number" step="0.01" name="rate_percentage" class="form-control" required value="<?= $r['rate_percentage'] ?>"></div>
+</div>
+<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="submit" class="btn btn-info text-white">Update</button></div>
+</form></div></div></div>
+<?php endforeach; ?>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -1,0 +1,50 @@
+USE tax_ets;
+
+-- Clear existing data to prevent duplicates
+DELETE FROM excise_provisions;
+ALTER TABLE excise_provisions AUTO_INCREMENT = 1;
+
+-- Seed Excise Tax Provisions extracted from legacy system (Repository.html)
+INSERT INTO excise_provisions (provision_number, start_year, end_year, legal_basis, type_of_te, description, purpose) VALUES
+(57, 2020, 2099, 'Excise Tax Law', 'Exemption',
+ 'Exemption--Excise Tax Law Art 12(5)',
+ 'Rescue vehicles, rescue airplanes, rescue boats, ambulances, fire trucks, and specialized service vehicles for the National Defence Forces and security forces'),
+(58, 2020, 2099, 'Excise Tax Law', 'Exemption',
+ 'Exemption--Excise Tax Law Art 12(6)',
+ 'Machinery Used for agricultural production'),
+(59, 2020, 2099, 'Excise Tax Law', 'Exemption',
+ 'Exemption--Excise Tax Law Art 12(7)',
+ 'Heavy machinery such as backhoe loader, drum rollers, excavators, motor graders, bulldozer, A truck equipped for pile foundation work that directly contribute to production and are considered as fixed assets'),
+(60, 2020, 2099, 'Excise Tax Law', 'Exemption',
+ 'Exemption--Excise Tax Law Art 12(10)',
+ 'Motorcycles using clean energy'),
+(61, 2020, 2099, 'Excise Tax Law', 'Exemption',
+ 'Exemption--Excise Tax Law Art 12(11)',
+ 'Vehicle components imported for assembly in domestic factory system'),
+(62, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art 15(2.1.1.2)',
+ 'Passenger vehicles using hybrid energy pay 50% of the applicable rates based on engine size for fuel energy (outlined in Art. 12 (2.1.1.1)'),
+(63, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art 15(2.1.1.3)',
+ 'Passenger transportation vehicles using clean energy pay a rate of 3%'),
+(64, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art 15(2.1.2)',
+ 'Cargo transportation vehicles like: normal 2-door pickup trucks and semi-automatic 2-door pickup trucks using clean energy pay a rate of 3%'),
+(65, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art15(2.1.3)',
+ 'Other small passenger and cargo transportation vehicles using clean energy pay a rate of 3%'),
+(66, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art 15(2.2)',
+ 'Medium passenger and cargo transportation vehicles using clean energy pay a rate of 3%'),
+(67, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art 15 (2.3)',
+ 'Large passenger and cargo transportation vehicles using clean energy pay a rate of 3%'),
+(68, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art. 15 (last paragraph)',
+ 'Vehicles utilizing fuel energy, manufactured or assembled within the domestic factory system in CKD form are subject to a 5% excise tax rate'),
+(69, 2020, 2099, 'Excise Tax Law', 'Reduction',
+ 'Rate Relief--Excise Tax Law Art. 15 (last paragraph)',
+ 'Vehicles utilizing fuel energy, manufactured or assembled within the domestic factory system in IKD form are subject to a 3% excise tax rate'),
+(93, 2020, 2099, 'IPL', 'Other',
+ 'Other for Excise Tax',
+ '');

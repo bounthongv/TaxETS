@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/notification_helper.php";
 require_once __DIR__ . "/../vendor/autoload.php";
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -26,7 +27,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $stmt->execute([$batch_id, $tin, $sheet->getCell("B" . $row)->getCalculatedValue(), date("Y-m-d")]);
             $imported++;
         }
-        $message = "Successfully imported $imported records.";
+
+        // --- AUTOMATED NOTIFICATION ---
+        if ($imported > 0) {
+            $notif_content = "MPI DATA IMPORT: Batch $batch_id completed. $imported new investment projects have been added to the repository. Please review and update sector categories if necessary.";
+            createNotification('MPI', $batch_id, $notif_content);
+        }
+        // ------------------------------
+
+        $message = "Successfully imported $imported records. System alert generated.";
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
     }

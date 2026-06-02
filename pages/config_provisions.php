@@ -20,6 +20,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
                 isset($_POST["is_exemption"]) ? 1 : 0
             ]);
             $message = "Provision added successfully.";
+        } elseif ($_POST["action"] == "edit_provision") {
+            $stmt = $pdo->prepare("UPDATE profit_provisions SET provision_number=?, start_year=?, end_year=?, legal_reference=?, description=?, target_rate=?, is_exemption=? WHERE id=?");
+            $stmt->execute([
+                $_POST["provision_number"], 
+                $_POST["start_year"] ?: 2020, 
+                $_POST["end_year"] ?: 2099, 
+                $_POST["legal_reference"], 
+                $_POST["description"],
+                $_POST["target_rate"] !== "" ? $_POST["target_rate"] : null,
+                isset($_POST["is_exemption"]) ? 1 : 0,
+                $_POST["id"]
+            ]);
+            $message = "Provision updated successfully.";
         } elseif ($_POST["action"] == "delete_provision") {
             $pdo->prepare("DELETE FROM profit_provisions WHERE id = ?")->execute([$_POST["id"]]);
             $message = "Provision deleted.";
@@ -44,7 +57,7 @@ require_once __DIR__ . "/../includes/header.php";
 </div>
 
 <?php if ($message): ?>
-<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm border-0 font-weight-bold">
+<div class="alert alert-<?= $msg_type ?> alert-dismissible fade show shadow-sm border-0 fw-bold">
     <i class="fas fa-<?= $msg_type == "success" ? "check-circle" : "exclamation-triangle" ?> me-2"></i>
     <?= htmlspecialchars($message) ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -83,8 +96,9 @@ require_once __DIR__ . "/../includes/header.php";
              <span class="badge bg-<?= $r["rule_count"] > 0 ? "primary" : "secondary" ?> rounded-pill"><?= $r["rule_count"] ?> rules</span>
           </td>
           <td class="pe-4 text-end">
-             <div class="btn-group">
-                <a href="config_rules.php?provision_id=<?= $r["id"] ?>" class="btn btn-sm btn-outline-primary" title="Edit Logic Rules"><i class="fas fa-cogs"></i></a>
+             <div class="d-flex justify-content-end align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#editProvModal<?= $r["id"] ?>" title="Edit"><i class="fas fa-edit"></i></button>
+                <a href="config_rules.php?provision_id=<?= $r["id"] ?>" class="btn btn-sm btn-outline-primary me-1" title="Edit Logic Rules"><i class="fas fa-cogs"></i></a>
                 <form method="POST" class="d-inline" onsubmit="return confirm(\"Delete provision and all associated rules?\")">
                   <input type="hidden" name="action" value="delete_provision">
                   <input type="hidden" name="id" value="<?= $r["id"] ?>">
@@ -157,4 +171,66 @@ require_once __DIR__ . "/../includes/header.php";
   </div>
 </div>
 
+<!-- Modal: Edit Provisions -->
+<?php foreach ($provisions as $r): ?>
+<div class="modal fade" id="editProvModal<?= $r["id"] ?>" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+      <form method="POST">
+        <input type="hidden" name="action" value="edit_provision">
+        <input type="hidden" name="id" value="<?= $r["id"] ?>">
+        <div class="modal-header bg-warning border-0 py-3">
+          <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i> Edit Provision</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-uppercase">Provision #</label>
+              <input type="text" name="provision_number" class="form-control" value="<?= htmlspecialchars($r["provision_number"]) ?>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-uppercase">Start Year</label>
+              <input type="number" name="start_year" class="form-control" value="<?= $r["start_year"] ?>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-uppercase">End Year</label>
+              <input type="number" name="end_year" class="form-control" value="<?= $r["end_year"] ?>" required>
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-uppercase">Legal Reference</label>
+            <input type="text" name="legal_reference" class="form-control" value="<?= htmlspecialchars($r["legal_reference"]) ?>" required>
+          </div>
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-uppercase">Description</label>
+            <textarea name="description" class="form-control" rows="2" required><?= htmlspecialchars($r["description"]) ?></textarea>
+          </div>
+          <div class="row align-items-end g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-uppercase">Target Rate (%)</label>
+              <div class="input-group">
+                <input type="number" step="0.01" name="target_rate" class="form-control" value="<?= $r["target_rate"] ?>">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch p-2 ps-5 rounded border border-success-subtle bg-success-light">
+                <input class="form-check-input" type="checkbox" name="is_exemption" id="isExemptionEdit<?= $r["id"] ?>" <?= $r["is_exemption"] ? "checked" : "" ?>>
+                <label class="form-check-label text-success fw-bold" for="isExemptionEdit<?= $r["id"] ?>">Full Tax Exemption (0%)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-0 py-3">
+          <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning px-4 shadow-sm">Update Provision</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
+
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>
+

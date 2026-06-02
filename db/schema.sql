@@ -120,3 +120,17 @@ INSERT INTO roles (role_name, role_description) VALUES ('ADMIN', 'Administrative
 INSERT INTO roles (role_name, role_description) VALUES ('USER', 'Basic user access');
 INSERT INTO users (name, email, password, position, role_id, active) 
 VALUES ('Administrator', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Admin', 1, 1);
+
+-- 10. EXCISE TAX PROVISIONS (Repository)
+CREATE TABLE IF NOT EXISTS excise_provisions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    provision_number VARCHAR(20) NOT NULL,
+    start_year INT NOT NULL DEFAULT 2020,
+    end_year INT NOT NULL DEFAULT 2099,
+    legal_basis VARCHAR(255),
+    description TEXT,
+    purpose TEXT,
+    type_of_te VARCHAR(50) NOT NULL DEFAULT 'Exemption',
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

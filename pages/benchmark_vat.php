@@ -12,6 +12,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
             $stmt = $pdo->prepare("INSERT INTO bm_vat (start_date, end_date, rate_percentage) VALUES (?, ?, ?)");
             $stmt->execute([$_POST["start_date"], $_POST["end_date"], $_POST["rate_percentage"]]);
             $message = "VAT Benchmark Rate added.";
+        } elseif ($_POST["action"] == "edit_rate") {
+            $stmt = $pdo->prepare("UPDATE bm_vat SET start_date=?, end_date=?, rate_percentage=? WHERE id=?");
+            $stmt->execute([$_POST["start_date"], $_POST["end_date"], $_POST["rate_percentage"], $_POST["id"]]);
+            $message = "VAT Benchmark Rate updated.";
         } elseif ($_POST["action"] == "delete_rate") {
             $pdo->prepare("DELETE FROM bm_vat WHERE id = ?")->execute([$_POST["id"]]);
             $message = "VAT Rate deleted.";
@@ -57,7 +61,8 @@ require_once __DIR__ . "/../includes/header.php";
           <td><?= date("d M Y", strtotime($r["end_date"])) ?></td>
           <td><span class="badge bg-primary fs-6"><?= number_format($r["rate_percentage"], 0) ?>%</span></td>
           <td class="text-end pe-4">
-            <form method="POST" class="d-inline" onsubmit="return confirm(\"Delete this rate period?\")">
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editRateModal<?= $r["id"] ?>"><i class="fas fa-edit"></i></button>
+            <form method="POST" class="d-inline" onsubmit="return confirm('Delete this rate period?')">
               <input type="hidden" name="action" value="delete_rate">
               <input type="hidden" name="id" value="<?= $r["id"] ?>">
               <button class="btn btn-outline-danger btn-sm"><i class="fas fa-trash"></i></button>
@@ -84,5 +89,19 @@ require_once __DIR__ . "/../includes/header.php";
     </form>
   </div></div>
 </div>
+
+<!-- Edit Rate Modals -->
+<?php foreach ($rates as $r): ?>
+<div class="modal fade" id="editRateModal<?= $r["id"] ?>" tabindex="-1"><div class="modal-dialog"><div class="modal-content border-0 shadow-lg">
+<form method="POST"><input type="hidden" name="action" value="edit_rate"><input type="hidden" name="id" value="<?= $r["id"] ?>">
+<div class="modal-header bg-warning"><h5 class="modal-title">Edit VAT Rate Period</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal-body p-4">
+<div class="mb-3"><label class="form-label small fw-bold text-uppercase">Start Date</label><input type="date" name="start_date" class="form-control" value="<?= date('Y-m-d', strtotime($r['start_date'])) ?>" required></div>
+<div class="mb-3"><label class="form-label small fw-bold text-uppercase">End Date</label><input type="date" name="end_date" class="form-control" value="<?= date('Y-m-d', strtotime($r['end_date'])) ?>" required></div>
+<div class="mb-0"><label class="form-label small fw-bold text-uppercase">Rate Percentage (%)</label><input type="number" step="0.01" name="rate_percentage" class="form-control" value="<?= $r["rate_percentage"] ?>" required></div>
+</div>
+<div class="modal-footer bg-light border-0"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="submit" class="btn btn-warning">Update</button></div>
+</form></div></div></div>
+<?php endforeach; ?>
 
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>

@@ -125,12 +125,12 @@ require_once __DIR__ . "/../includes/header.php";
                             <?= $p["active"] ? "Active" : "Inactive" ?>
                         </span>
                     </td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary" onclick='editProv(<?= json_encode($p) ?>)'><i class="fas fa-edit"></i></button>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1" onclick='editProv(<?= json_encode($p) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
                         <form method="POST" class="d-inline" onsubmit="return confirm('Delete this provision?')">
                             <input type="hidden" name="action" value="delete_prov">
                             <input type="hidden" name="id" value="<?= $p["id"] ?>">
-                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button>
                         </form>
                     </td>
                 </tr>
