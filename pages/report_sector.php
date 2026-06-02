@@ -70,7 +70,7 @@ try {
 
     // B. PIT by Sector (via TIN)
     $stmt = $pdo->prepare("SELECT COALESCE(c.sector, 'Unclassified') as sec, r.tax_year, SUM(r.te_amount) as te
-                           FROM te_individual_result r LEFT JOIN companies c ON r.tin = c.tin
+                           FROM te_individual_result r LEFT JOIN companies c ON r.tin = c.tin COLLATE utf8mb4_general_ci
                            WHERE r.tax_year BETWEEN ? AND ? GROUP BY sec, r.tax_year");
     $stmt->execute([$from_year, $to_year]);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -85,7 +85,7 @@ try {
 
     // C. Salary Tax by Sector (via TIN)
     $stmt = $pdo->prepare("SELECT COALESCE(c.sector, 'Unclassified') as sec, s.tax_year, SUM(s.te_amount) as te
-                           FROM import_salary_tax_data s LEFT JOIN companies c ON s.tin = c.tin
+                           FROM import_salary_tax_data s LEFT JOIN companies c ON s.tin = c.tin COLLATE utf8mb4_unicode_ci
                            WHERE s.tax_year BETWEEN ? AND ? AND s.te_amount > 0 GROUP BY sec, s.tax_year");
     $stmt->execute([$from_year, $to_year]);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -420,7 +420,8 @@ $sectorDataForChart[] = $otherRow;
 <!-- Chart Section -->
 <style>
 .chart-type-btn.active { background-color: var(--bs-primary) !important; color: #fff !important; border-color: var(--bs-primary) !important; }
-.pie-chart-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.5rem; }
+.pie-chart-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.25rem; }
+.pie-chart-container canvas { max-height: 180px; }
 </style>
 
 <div class="card shadow-sm mb-4" style="border-radius: 12px;">
@@ -441,10 +442,10 @@ $sectorDataForChart[] = $otherRow;
     </div>
 
     <div id="chartContainer" style="display: block;">
-      <canvas id="teSectorChart" height="220"></canvas>
+      <canvas id="teSectorChart" height="120"></canvas>
     </div>
 
-    <div id="pieChartsContainer" class="row g-3" style="display: none;"></div>
+    <div id="pieChartsContainer" class="row g-2" style="display: none;"></div>
   </div>
 </div>
 </div> <!-- /reportContent -->
@@ -578,8 +579,8 @@ var chartYears = <?= json_encode($display_years) ?>;
                     options: {
                         responsive: true, maintainAspectRatio: true,
                         plugins: {
-                            legend: { position: 'right', labels: { boxWidth: 10, padding: 6, font: { size: 10 } } },
-                            title: { display: true, text: 'Year ' + year, font: { size: 12 } },
+                            legend: { position: 'right', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } },
+                            title: { display: true, text: 'Year ' + year, font: { size: 11 }, padding: { top: 4, bottom: 2 } },
                             tooltip: { callbacks: { label: function(ctx) {
                                 var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
                                 var pct = ((ctx.raw / total) * 100).toFixed(1);

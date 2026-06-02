@@ -108,7 +108,7 @@ require_once __DIR__ . "/../includes/header.php";
 <?php endif; ?>
 
 <div class="row">
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card border-0 shadow-sm" style="border-radius: 12px;">
       <div class="card-header bg-white border-0 py-3">
         <span class="text-muted small">Total <?= count($roles) ?> roles</span>
@@ -118,15 +118,15 @@ require_once __DIR__ . "/../includes/header.php";
           <?php foreach ($roles as $r): ?>
           <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= $selected_role == $r["id"] ? "active" : "" ?>" 
                onclick="window.location='?role_id=<?= $r["id"] ?>'">
-            <div>
+            <div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               <strong><?= htmlspecialchars($r["role_name"]) ?></strong>
-              <br><small class="text-muted"><?= $r["user_count"] ?> users</small>
+              <br><small class="<?= $selected_role == $r["id"] ? "text-white-50" : "text-muted" ?>"><?= $r["user_count"] ?> users</small>
             </div>
-            <div>
-              <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editRole(<?= htmlspecialchars(json_encode($r)) ?>)">
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm <?= $selected_role == $r["id"] ? "btn-light" : "btn-outline-primary" ?>" onclick="event.stopPropagation(); editRole(<?= htmlspecialchars(json_encode($r)) ?>)">
                 <i class="fas fa-edit"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteRole(<?= $r["id"] ?>, <?= json_encode($r["role_name"]) ?>)">
+              <button class="btn btn-sm <?= $selected_role == $r["id"] ? "btn-light text-danger" : "btn-outline-danger" ?>" onclick="event.stopPropagation(); deleteRole(<?= $r["id"] ?>, <?= json_encode($r["role_name"]) ?>)">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -137,50 +137,69 @@ require_once __DIR__ . "/../includes/header.php";
     </div>
   </div>
   
-  <div class="col-md-8">
+  <div class="col-md-9">
     <?php if ($selected_role): ?>
-    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-      <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-        <span class="fw-bold">Permissions - <?= htmlspecialchars($roles[array_search($selected_role, array_column($roles, "id"))]["role_name"] ?? "") ?></span>
-        <form method="POST" class="d-inline">
+    <form method="POST">
+      <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-bold text-primary">
+            <i class="fas fa-key me-2"></i>Permissions - <?= htmlspecialchars($roles[array_search($selected_role, array_column($roles, "id"))]["role_name"] ?? "") ?>
+          </h5>
+          <button type="submit" class="btn btn-primary shadow-sm">
+            <i class="fas fa-save me-1"></i> Save Permissions
+          </button>
+        </div>
+        <div class="card-body p-0">
           <input type="hidden" name="action" value="save_permissions">
           <input type="hidden" name="role_id" value="<?= $selected_role ?>">
-          <table class="table table-sm mb-0">
-            <thead class="bg-light small">
-              <tr>
-                <th>Module</th>
-                <th class="text-center">Create</th>
-                <th class="text-center">Read</th>
-                <th class="text-center">Update</th>
-                <th class="text-center">Delete</th>
-              </tr>
-            </thead>
-            <tbody class="small">
-              <?php foreach ($modules as $mod => $name): 
-                $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>1, "can_update"=>0, "can_delete"=>0];
-              ?>
-              <tr>
-                <td><?= htmlspecialchars($name) ?></td>
-                <td class="text-center">
-                  <input type="checkbox" name="permissions[<?= $mod ?>][c]" <?= $p["can_create"] ? "checked" : "" ?>>
-                </td>
-                <td class="text-center">
-                  <input type="checkbox" name="permissions[<?= $mod ?>][r]" <?= $p["can_read"] ? "checked" : "" ?>>
-                </td>
-                <td class="text-center">
-                  <input type="checkbox" name="permissions[<?= $mod ?>][u]" <?= $p["can_update"] ? "checked" : "" ?>>
-                </td>
-                <td class="text-center">
-                  <input type="checkbox" name="permissions[<?= $mod ?>][d]" <?= $p["can_delete"] ? "checked" : "" ?>>
-                </td>
-              </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-          <button type="submit" class="btn btn-primary mt-2"><i class="fas fa-save me-1"></i> Save Permissions</button>
-        </form>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light text-muted small">
+                <tr>
+                  <th class="ps-4" style="width: 40%;">Module</th>
+                  <th class="text-center">Create</th>
+                  <th class="text-center">Read</th>
+                  <th class="text-center">Update</th>
+                  <th class="text-center">Delete</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($modules as $mod => $name): 
+                  $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>1, "can_update"=>0, "can_delete"=>0];
+                ?>
+                <tr>
+                  <td class="ps-4">
+                    <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
+                    <small class="text-muted d-block" style="font-size: 0.75rem;"><?= htmlspecialchars($mod) ?></small>
+                  </td>
+                  <td class="text-center">
+                    <div class="form-check form-check-inline m-0">
+                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][c]" <?= $p["can_create"] ? "checked" : "" ?>>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <div class="form-check form-check-inline m-0">
+                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][r]" <?= $p["can_read"] ? "checked" : "" ?>>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <div class="form-check form-check-inline m-0">
+                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][u]" <?= $p["can_update"] ? "checked" : "" ?>>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <div class="form-check form-check-inline m-0">
+                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][d]" <?= $p["can_delete"] ? "checked" : "" ?>>
+                    </div>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    </div>
+    </form>
     <?php endif; ?>
   </div>
 </div>

@@ -261,35 +261,37 @@
         <li class="<?= $cur == 'report_gdp.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_gdp.php">TE by Tax Type (% of GDP)</a></li>
         <li class="<?= $cur == 'report_revenue.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_revenue.php">TE by Tax Type (% of Revenue)</a></li>
         <?php
-        $is_provision_report = ($cur == 'report_provisions.php' || $cur == 'report_individual_provision.php' || $cur == 'report_vat_provision.php' || $cur == 'report_nontax_provision.php' || $cur == 'te_salary_tax.php' || $cur == 'te_sez_dev.php' || $cur == 'te_sez_inv.php');
+        $is_provision_report = ($cur == 'report_total_provision.php' || $cur == 'report_provisions.php' || $cur == 'report_individual_provision.php' || $cur == 'report_salary_tax_provision.php' || $cur == 'report_vat_provision.php' || $cur == 'report_sez_dev_provision.php' || $cur == 'report_sez_inv_provision.php' || $cur == 'report_nontax_provision.php');
         ?>
         <li class="<?= $is_provision_report ? 'active' : '' ?>">
           <a href="#provisionReportSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_provision_report ? 'true' : 'false' ?>">
             <i class="fas fa-list-alt me-2"></i> TE by Provision
           </a>
           <ul class="collapse list-unstyled ps-3 <?= $is_provision_report ? 'show' : '' ?>" id="provisionReportSub">
+            <li class="<?= $cur == 'report_total_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_total_provision.php"><i class="fas fa-layer-group me-1 text-warning"></i> <strong>Total TE by Provision</strong></a></li>
             <li class="<?= $cur == 'report_provisions.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_provisions.php">Profit Tax TE</a></li>
             <li class="<?= $cur == 'report_individual_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_individual_provision.php">Individual Income Tax TE</a></li>
-            <li class="<?= $cur == 'te_salary_tax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_salary_tax.php">Salary Tax TE</a></li>
+            <li class="<?= $cur == 'report_salary_tax_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_salary_tax_provision.php">Salary Tax TE</a></li>
             <li class="<?= $cur == 'report_vat_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_vat_provision.php">Domestic VAT TE</a></li>
-            <li class="<?= $cur == 'te_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_dev.php">SEZ Developer TE</a></li>
-            <li class="<?= $cur == 'te_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_sez_inv.php">SEZ Investor TE</a></li>
+            <li class="<?= $cur == 'report_sez_dev_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_sez_dev_provision.php">SEZ Developer TE</a></li>
+            <li class="<?= $cur == 'report_sez_inv_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_sez_inv_provision.php">SEZ Investor TE</a></li>
             <li class="<?= $cur == 'report_nontax_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_nontax_provision.php">Non-Tax: Land Concession TE</a></li>
             <li class="<?= $cur == 'report_nontax_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_nontax_provision.php">Non-Tax: Resource Fee TE</a></li>
             <li class="<?= $cur == 'report_nontax_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_nontax_provision.php">Non-Tax: Royalty Fee TE</a></li>
           </ul>
         </li>
         <?php
-        $is_customs_report = ($cur == 'te_asycuda_customs.php' || $cur == 'te_asycuda_excise.php' || $cur == 'te_asycuda_vat.php');
+        $is_customs_report = ($cur == 'report_total_customs.php' || $cur == 'report_customs_duty.php' || $cur == 'report_excise_tax.php' || $cur == 'report_import_vat.php');
         ?>
         <li class="<?= $is_customs_report ? 'active' : '' ?>">
           <a href="#customsReportSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_customs_report ? 'true' : 'false' ?>">
             <i class="fas fa-ship me-2"></i> TE by Customs Regime Code-Payment Condition Code
           </a>
           <ul class="collapse list-unstyled ps-3 <?= $is_customs_report ? 'show' : '' ?>" id="customsReportSub">
-            <li class="<?= $cur == 'te_asycuda_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_customs.php">Custom Duty</a></li>
-            <li class="<?= $cur == 'te_asycuda_excise.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_excise.php">Excise Tax</a></li>
-            <li class="<?= $cur == 'te_asycuda_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_asycuda_vat.php">Import VAT</a></li>
+            <li class="<?= $cur == 'report_total_customs.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_total_customs.php"><i class="fas fa-layer-group me-1 text-warning"></i> <strong>Total TE by Customs Regime</strong></a></li>
+            <li class="<?= $cur == 'report_customs_duty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_customs_duty.php">Custom Duty</a></li>
+            <li class="<?= $cur == 'report_excise_tax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_excise_tax.php">Excise Tax</a></li>
+            <li class="<?= $cur == 'report_import_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_import_vat.php">Import VAT</a></li>
           </ul>
         </li>
       </ul>

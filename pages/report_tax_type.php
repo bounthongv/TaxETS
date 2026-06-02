@@ -257,7 +257,8 @@ if ($is_export) {
 
 <style>
 .chart-type-btn.active { background-color: var(--bs-primary) !important; color: #fff !important; border-color: var(--bs-primary) !important; }
-.pie-chart-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.5rem; }
+.pie-chart-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.25rem; }
+.pie-chart-container canvas { max-height: 180px; }
 </style>
 
 <!-- Chart Section -->
@@ -279,10 +280,10 @@ if ($is_export) {
     </div>
 
     <div id="chartContainer" style="display: block;">
-      <canvas id="teResultByTypeChart" height="220"></canvas>
+      <canvas id="teResultByTypeChart" height="120"></canvas>
     </div>
 
-    <div id="pieChartsContainer" class="row g-3" style="display: none;"></div>
+    <div id="pieChartsContainer" class="row g-2" style="display: none;"></div>
   </div>
 </div>
 
@@ -415,8 +416,8 @@ var chartYears = <?= json_encode(array_map('intval', $annual_years)) ?>;
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: {
-                            legend: { position: 'right', labels: { boxWidth: 10, padding: 6, font: { size: 10 } } },
-                            title: { display: true, text: 'Year ' + year, font: { size: 12 } },
+                            legend: { position: 'right', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } },
+                            title: { display: true, text: 'Year ' + year, font: { size: 11 }, padding: { top: 4, bottom: 2 } },
                             tooltip: { callbacks: { label: function(ctx) {
                                 var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
                                 var pct = ((ctx.raw / total) * 100).toFixed(1);
