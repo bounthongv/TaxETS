@@ -47,5 +47,8 @@ CREATE TABLE IF NOT EXISTS `import_vat_data` (
     `vat_payable` DECIMAL(15,2) DEFAULT 0,
     `vat_credit` DECIMAL(15,2) DEFAULT 0,
     `expert_te` DECIMAL(15,2) DEFAULT 0,
+    `system_te` DECIMAL(15,2) DEFAULT NULL,
+    `benchmark_output_vat` DECIMAL(15,2) DEFAULT NULL,
+    `calculated_vat_payable` DECIMAL(15,2) DEFAULT NULL,
     `provision_number` VARCHAR(20)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

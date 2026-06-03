@@ -51,14 +51,14 @@ class TEResourceEngine {
 
         // Find benchmark rate
         // We match by item_no or item_name
-        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_natural_resource WHERE (item_no = ? OR item_name = ?) AND start_year <= ? AND (end_year IS NULL OR end_year >= ?) LIMIT 1");
+        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_natural_resource WHERE active = 1 AND (item_no = ? OR item_name = ?) AND start_year <= ? AND (end_year IS NULL OR end_year >= ?) LIMIT 1");
         $stmt->execute([$resource_type, $resource_type, $year, $year]);
-        $benchmark_rate = (float)$stmt->fetchColumn();
+        $benchmark_rate = $stmt->fetchColumn();
 
-        if (!$benchmark_rate) {
-            // Default rate if not found (needs validation from MOF expert)
-            $benchmark_rate = 5.0; 
+        if ($benchmark_rate === false) {
+            throw new Exception("No resource fee benchmark configured for '{$resource_type}' in year {$year}");
         }
+        $benchmark_rate = (float)$benchmark_rate;
 
         $te_amount = 0.0;
         $benchmark_fee = $fee_collected;

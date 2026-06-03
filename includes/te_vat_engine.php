@@ -21,9 +21,11 @@ class TEVatEngine {
             try {
                 $result = $this->calculateVat($row);
 
-                $updateStmt = $this->pdo->prepare("UPDATE import_vat_data SET expert_te = ?, provision_number = ? WHERE id = ?");
+                $updateStmt = $this->pdo->prepare("UPDATE import_vat_data SET system_te = ?, benchmark_output_vat = ?, calculated_vat_payable = ?, provision_number = ? WHERE id = ?");
                 $updateStmt->execute([
                     $result['calculated_te'],
+                    $result['benchmark_output_vat'],
+                    $result['calculated_vat_payable'],
                     $result['matched_provisions'],
                     $row['id']
                 ]);
@@ -85,16 +87,14 @@ class TEVatEngine {
             }
         }
 
-        // Fallback for null period or no rate found for specific date
-        $fallback = $this->pdo->query("SELECT rate_percentage FROM bm_vat ORDER BY end_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-        return $fallback ? (float)$fallback['rate_percentage'] : 10.0;
+        throw new Exception("No VAT benchmark rate configured for filing period " . ($filing_period ?: "blank"));
     }
 
     // matchProvisions method removed: VAT mapping relies on the explicit 
     // provision classification provided during the Excel import process.
 
     public function getBatchSummary(string $batch_id): array {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) as total, SUM(expert_te) as total_te, SUM(sales_standard) as total_standard, SUM(sales_zero_rate) as total_zero, SUM(sales_exempt) as total_exempt FROM import_vat_data WHERE batch_id = ?");
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) as total, SUM(system_te) as total_te, SUM(sales_standard) as total_standard, SUM(sales_zero_rate) as total_zero, SUM(sales_exempt) as total_exempt FROM import_vat_data WHERE batch_id = ?");
         $stmt->execute([$batch_id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'total_te' => 0, 'total_standard' => 0, 'total_zero' => 0, 'total_exempt' => 0];
     }

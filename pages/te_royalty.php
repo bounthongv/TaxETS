@@ -16,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
         if (empty($summary["errors"])) {
             $message = "Calculation complete! <strong>{$summary['calculated']} records</strong> processed. Total TE = <strong>" . number_format($summary["total_te"], 2) . " LAK</strong>";
         } else {
-            $message = "Calculated with " . count($summary["errors"]) . " errors: " . implode("; ", array_slice($summary["errors"], 0, 3));
+            $message = "Calculated with " . count($summary["errors"]) . " errors: " . htmlspecialchars(implode("; ", array_slice($summary["errors"], 0, 3)));
             $msg_type = "warning";
         }
     } catch (Exception $e) {

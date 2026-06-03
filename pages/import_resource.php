@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
-        $batch_id = "BATCH_RESOURCE_" . date("YmdHis");
+        $batch_id = "RESOURCE_BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
 
@@ -38,8 +38,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         }
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+            $hasData = false;
+            foreach (range('A', 'F') as $col) {
+                $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
+                if ($cellValue !== '') {
+                    $hasData = true;
+                    break;
+                }
+            }
+            if (!$hasData) {
+                continue;
+            }
+
             $tin = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? "");
-            if (empty($tin)) { $skipped++; continue; }
+            if (empty($tin)) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing TIN";
+                continue;
+            }
 
             $num = function($col) use ($sheet, $row) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
@@ -47,13 +63,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 return (float)str_replace(',', '', (string)($v ?? '0'));
             };
 
-            $license_date_val = $sheet->getCell("C" . $row)->getCalculatedValue();
+            $license_date_val = $sheet->getCell("B" . $row)->getCalculatedValue();
             $license_date = null;
             if (is_numeric($license_date_val)) {
                 try { $license_date = Date::excelToDateTimeObject($license_date_val)->format("Y-m-d"); } catch (Exception $e) {}
+            } elseif (!empty($license_date_val)) {
+                try { $license_date = (new DateTime((string)$license_date_val))->format("Y-m-d"); } catch (Exception $e) {}
             }
 
-            $raw_type = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? "");
+            $tax_year = (int)$sheet->getCell("F" . $row)->getCalculatedValue();
+            if ($tax_year <= 0) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing or invalid Year_data";
+                continue;
+            }
+
+            $raw_type = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? "");
             $upper_type = strtoupper($raw_type);
             $resolved_type = $rt_by_no[$upper_type] ?? $rt_by_name[$upper_type] ?? null;
             if (!$resolved_type && strlen($upper_type) >= 2) {
@@ -69,8 +94,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             }
             $resource_type = $resolved_type ?: $raw_type;
 
-            $actual_rate_val = $num("E");
-            $fee_collected_val = $num("F");
+            $actual_rate_val = $num("D");
+            $fee_collected_val = $num("E");
 
             if ($actual_rate_val <= 0) {
                 $error_log[] = "Row $row: Non-positive Actual Rate ($actual_rate_val)";
@@ -81,7 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $data = [
                 "batch_id"      => $batch_id,
-                "tax_year"      => (int)$sheet->getCell("B" . $row)->getCalculatedValue(),
+                "tax_year"      => $tax_year,
                 "tin"           => $tin,
                 "license_date"  => $license_date,
                 "resource_type" => $resource_type,
@@ -95,8 +120,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $imported++;
         }
 
-        $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
-        $message .= "Skipped $skipped rows (missing TIN).<br>";
+        if ($imported > 0) {
+            $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
+            $message .= "Skipped $skipped rows.<br>";
+            $message .= "<a href='view_resource.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
+            $message .= "<a href='te_resource.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
+        } else {
+            $message = "<strong>No Resource Fee records imported.</strong><br>The uploaded workbook appears to contain only headers or no complete data rows.";
+            $msg_type = "warning";
+        }
 
         if (!empty($error_log)) {
             $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
@@ -107,7 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             if (!is_dir(__DIR__ . "/../data/logs")) mkdir(__DIR__ . "/../data/logs", 0777, true);
             file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
 
-            $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+            $message .= "<br><a href='download_log.php?log_id=" . urlencode($batch_id) . "' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
         }
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
@@ -169,11 +201,11 @@ require_once __DIR__ . "/../includes/header.php";
           <thead class="table-light"><tr><th>Col</th><th>Field</th></tr></thead>
           <tbody>
             <tr><td>A</td><td>TIN</td></tr>
-            <tr><td>B</td><td>Tax Year</td></tr>
-            <tr><td>C</td><td>License Date</td></tr>
-            <tr><td>D</td><td>Resource Type</td></tr>
-            <tr><td>E</td><td>Actual Rate (%)</td></tr>
-            <tr><td>F</td><td>Fee Collected (LAK)</td></tr>
+            <tr><td>B</td><td>Investment License Date</td></tr>
+            <tr><td>C</td><td>Natural Resource Type</td></tr>
+            <tr><td>D</td><td>Resource Fee Rate (%)</td></tr>
+            <tr><td>E</td><td>Resource Fee Collected (LAK)</td></tr>
+            <tr><td>F</td><td>Tax Year</td></tr>
           </tbody>
         </table>
       </div>
@@ -212,7 +244,7 @@ require_once __DIR__ . "/../includes/header.php";
                 <td><span class="badge bg-warning text-dark rounded-pill px-3"><?= $r["rows"] ?></span></td>
                 <td>
                   <a href="view_resource.php?batch=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
-                  <a href="te_nontax.php?batch=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
+                  <a href="te_resource.php?batch=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
                   <?php if($has_log): ?>
                     <a href="download_log.php?log_id=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-danger" title="Download Log"><i class="fas fa-file-alt"></i></a>
                   <?php endif; ?>

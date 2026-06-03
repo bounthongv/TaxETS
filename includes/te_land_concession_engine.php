@@ -8,35 +8,30 @@ class TELandConcessionEngine {
     }
 
     public function calculateBatch(string $batch_id): array {
-        $this->pdo->prepare("DELETE FROM te_land_concession_result WHERE company_id IN (SELECT id FROM companies WHERE import_batch_id = ?)")
-            ->execute([$batch_id]);
-
-        $companies = $this->pdo->prepare("SELECT * FROM companies WHERE import_batch_id = ? AND land_area_sqm > 0");
-        $companies->execute([$batch_id]);
+        $records = $this->pdo->prepare("SELECT * FROM repo_land_concession_data WHERE import_batch_id = ?");
+        $records->execute([$batch_id]);
 
         $total_calculated = 0;
         $total_te = 0.0;
         $errors = [];
 
-        foreach ($companies->fetchAll() as $company) {
+        foreach ($records->fetchAll(PDO::FETCH_ASSOC) as $row) {
             try {
-                $result = $this->calculateCompany($company);
-                $stmt = $this->pdo->prepare("INSERT INTO te_land_concession_result 
-                    (company_id, zone_type, benchmark_rate, land_value_kip, exemption_years, exemption_value, te_land_concession) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $result = $this->calculateRecord($row);
+                $stmt = $this->pdo->prepare("
+                    UPDATE repo_land_concession_data
+                    SET benchmark_value_usd = ?, non_tax_te_usd = ?
+                    WHERE id = ?
+                ");
                 $stmt->execute([
-                    $company["id"],
-                    $result["zone_type"],
-                    $result["benchmark_rate"],
-                    $result["land_value_kip"],
-                    $result["exemption_years"],
-                    $result["exemption_value"],
-                    $result["te_land_concession"]
+                    $result["benchmark_value_usd"],
+                    $result["non_tax_te_usd"],
+                    $row["id"]
                 ]);
-                $total_te += $result["te_land_concession"];
+                $total_te += $result["non_tax_te_usd"];
                 $total_calculated++;
             } catch (Exception $e) {
-                $errors[] = "Company ID {$company['id']} (Tax ID: {$company['tax_id']}): " . $e->getMessage();
+                $errors[] = "TIN {$row['tin']} (ID: {$row['id']}): " . $e->getMessage();
             }
         }
 
@@ -44,6 +39,51 @@ class TELandConcessionEngine {
             "calculated" => $total_calculated,
             "total_te" => $total_te,
             "errors" => $errors
+        ];
+    }
+
+    public function getBatchSummary(string $batch_id): array {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                COUNT(*) as total,
+                COALESCE(SUM(concession_area_ha), 0) as total_area_ha,
+                COALESCE(SUM(concession_fee_paid_usd), 0) as total_paid_usd,
+                COALESCE(SUM(benchmark_value_usd), 0) as total_benchmark_usd,
+                COALESCE(SUM(non_tax_te_usd), 0) as total_te_usd
+            FROM repo_land_concession_data
+            WHERE import_batch_id = ?
+        ");
+        $stmt->execute([$batch_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [
+            "total" => 0,
+            "total_area_ha" => 0,
+            "total_paid_usd" => 0,
+            "total_benchmark_usd" => 0,
+            "total_te_usd" => 0
+        ];
+    }
+
+    private function calculateRecord(array $row): array {
+        $area = (float)($row["concession_area_ha"] ?? 0);
+        $benchmarkRate = (float)($row["benchmark_rate_usd"] ?? 0);
+        $paid = (float)($row["concession_fee_paid_usd"] ?? 0);
+
+        if ($area <= 0) {
+            throw new Exception("Concession area must be greater than zero");
+        }
+        if ($benchmarkRate <= 0) {
+            throw new Exception("Benchmark rate must be greater than zero");
+        }
+        if ($paid < 0) {
+            throw new Exception("Paid concession fee cannot be negative");
+        }
+
+        $benchmarkValue = $area * $benchmarkRate;
+        $teAmount = max(0, $benchmarkValue - $paid);
+
+        return [
+            "benchmark_value_usd" => round($benchmarkValue, 4),
+            "non_tax_te_usd" => round($teAmount, 4)
         ];
     }
 

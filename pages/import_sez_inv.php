@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
-        $batch_id = "BATCH_SEZINV_" . date("YmdHis");
+        $batch_id = "SEZINV_BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
 
@@ -33,8 +33,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $dist_rows = $pdo->query("SELECT d.district_code AS dis_id, p.province_code AS pro_id, d.district_name AS dis_name FROM districts d LEFT JOIN provinces p ON d.province_id = p.id")->fetchAll();
 
         $prov_map = [];
+        $prov_code_map = [];
         foreach ($prov_rows as $r) {
             $prov_map[strtoupper(trim($r['pro_name']))] = ['id' => $r['pro_id'], 'name' => $r['pro_name']];
+            $prov_code_map[strtoupper(trim($r['pro_id']))] = ['id' => $r['pro_id'], 'name' => $r['pro_name']];
         }
         $prov_aliases = [
             'VIENTIANE'          => '01',
@@ -47,15 +49,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             'ATTAPEU'            => '17', 'ATTAPU'        => '17', 'XAISOMBOUN' => '18',
         ];
         $dist_map = [];
+        $dist_code_map = [];
         $dist_by_province = [];
         foreach ($dist_rows as $r) {
             $dist_map[$r['pro_id'] . '|' . strtoupper(trim($r['dis_name']))] = $r['dis_id'];
+            $dist_code_map[strtoupper(trim($r['dis_id']))] = [
+                'id' => $r['dis_id'],
+                'pro_id' => $r['pro_id'],
+                'name' => $r['dis_name']
+            ];
             $dist_by_province[$r['pro_id']][] = ['id' => $r['dis_id'], 'name' => strtoupper(trim($r['dis_name']))];
         }
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+            $hasData = false;
+            foreach (range('A', 'G') as $col) {
+                $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
+                if ($cellValue !== '') {
+                    $hasData = true;
+                    break;
+                }
+            }
+            if (!$hasData) {
+                continue;
+            }
+
             $tin = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? "");
-            if (empty($tin)) { $skipped++; continue; }
+            if (empty($tin)) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing TIN";
+                continue;
+            }
 
             $num = function($col) use ($sheet, $row) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
@@ -67,6 +91,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $license_date = null;
             if (is_numeric($license_date_val)) {
                 try { $license_date = Date::excelToDateTimeObject($license_date_val)->format("Y-m-d"); } catch (Exception $e) {}
+            } elseif (!empty($license_date_val)) {
+                try { $license_date = (new DateTime((string)$license_date_val))->format("Y-m-d"); } catch (Exception $e) {}
+            }
+
+            $tax_year = (int)$sheet->getCell("B" . $row)->getCalculatedValue();
+            if ($tax_year <= 0) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing or invalid Tax Year";
+                continue;
             }
 
             $raw_prov = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
@@ -74,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             // Province Resolution
             $upper_prov = strtoupper($raw_prov);
-            $prov_match = $prov_map[$upper_prov] ?? null;
+            $prov_match = $prov_code_map[$upper_prov] ?? ($prov_map[$upper_prov] ?? null);
             if (!$prov_match && isset($prov_aliases[$upper_prov])) {
                 $alias_id = $prov_aliases[$upper_prov];
                 foreach ($prov_rows as $pr) {
@@ -98,7 +131,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             // District Resolution
             $dis_id = null;
             $official_district = $raw_dist;
-            if ($pro_id && !empty($raw_dist)) {
+            $upper_raw_dist = strtoupper($raw_dist);
+            if (!empty($upper_raw_dist) && isset($dist_code_map[$upper_raw_dist])) {
+                $district_match = $dist_code_map[$upper_raw_dist];
+                $dis_id = $district_match['id'];
+                $official_district = $district_match['name'];
+                if (!$pro_id && !empty($district_match['pro_id']) && isset($prov_code_map[strtoupper($district_match['pro_id'])])) {
+                    $prov_match = $prov_code_map[strtoupper($district_match['pro_id'])];
+                    $pro_id = $prov_match['id'];
+                    $official_province = $prov_match['name'];
+                }
+            } elseif ($pro_id && !empty($raw_dist)) {
                 $clean_dist = preg_replace('/\s+District$/i', '', $raw_dist);
                 $upper_dist = strtoupper($clean_dist);
                 $dis_id = $dist_map[$pro_id . '|' . $upper_dist] ?? null;
@@ -120,7 +163,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $data = [
                 "batch_id"             => $batch_id,
-                "tax_year"             => (int)$sheet->getCell("B" . $row)->getCalculatedValue(),
+                "tax_year"             => $tax_year,
                 "tin"                  => $tin,
                 "license_date"         => $license_date,
                 "pro_id"               => $pro_id,
@@ -138,8 +181,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $imported++;
         }
 
-        $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
-        $message .= "Skipped $skipped rows (missing TIN).<br>";
+        if ($imported > 0) {
+            $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
+            $message .= "Skipped $skipped rows.<br>";
+            $message .= "<a href='view_sez_inv.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
+            $message .= "<a href='te_sez_inv.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
+        } else {
+            $message = "<strong>No SEZ Investor records imported.</strong><br>The uploaded workbook appears to contain only headers or no complete data rows.";
+            $msg_type = "warning";
+        }
 
         if (!empty($error_log)) {
             $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
@@ -150,7 +200,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             if (!is_dir(__DIR__ . "/../data/logs")) mkdir(__DIR__ . "/../data/logs", 0777, true);
             file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
 
-            $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+            $message .= "<br><a href='download_log.php?log_id=" . urlencode($batch_id) . "' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
         }
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
@@ -216,9 +266,9 @@ require_once __DIR__ . "/../includes/header.php";
           <tbody>
             <tr><td>A</td><td>TIN</td></tr>
             <tr><td>B</td><td>Tax Year</td></tr>
-            <tr><td>C</td><td>Investment License Date</td></tr>
-            <tr><td>D</td><td>Province</td></tr>
-            <tr><td>E</td><td>District</td></tr>
+            <tr><td>C</td><td>Permission / License Date</td></tr>
+            <tr><td>D</td><td>Province ID</td></tr>
+            <tr><td>E</td><td>District ID</td></tr>
             <tr><td>F</td><td>Electricity and Water used in Production</td></tr>
             <tr><td>G</td><td>Construction/Development of Infrastructures</td></tr>
           </tbody>

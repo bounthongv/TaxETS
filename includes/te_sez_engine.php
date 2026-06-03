@@ -44,7 +44,11 @@ class TESEZEngine {
     }
 
     public function calculateSEZTE(array $row): array {
-        $vat_rate = 10.0; // Default VAT Benchmark Rate
+        $tax_year = (int)($row['tax_year'] ?? date('Y'));
+        if ($tax_year <= 0) {
+            $tax_year = (int)date('Y');
+        }
+        $vat_rate = $this->lookupVatRateForYear($tax_year);
         $te_amount = 0.0;
         $prov_numbers = [];
 
@@ -81,6 +85,25 @@ class TESEZEngine {
             'te_amount' => round($te_amount, 2),
             'provision_number' => !empty($prov_numbers) ? implode(', ', $prov_numbers) : 'None'
         ];
+    }
+
+    private function lookupVatRateForYear(int $year): float {
+        $rateDate = sprintf('%04d-01-01', $year);
+        $stmt = $this->pdo->prepare("
+            SELECT rate_percentage
+            FROM bm_vat
+            WHERE start_date <= ? AND end_date >= ?
+            ORDER BY start_date DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$rateDate, $rateDate]);
+        $rate = $stmt->fetchColumn();
+
+        if ($rate === false) {
+            throw new Exception("No VAT benchmark rate configured for SEZ year $year");
+        }
+
+        return (float)$rate;
     }
 
     public function getBatchSummary(string $batch_id): array {

@@ -24,20 +24,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
-        $batch_id = "BATCH_ROYALTY_" . date("YmdHis");
+        $batch_id = "ROYALTY_BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
 
-        // Column mapping: A=TIN, B=Tax Year/License Date, C=Sale Value, D=Rate, E=Fee
-        $resource_types = $pdo->query("SELECT item_no, item_name FROM bm_natural_resource WHERE active = 1")->fetchAll();
-        $rt_map = [];
-        foreach ($resource_types as $rt) {
-            $rt_map[strtoupper(trim($rt['item_no']))] = true;
-            $rt_map[strtoupper(trim($rt['item_name']))] = true;
-        }
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+            $hasData = false;
+            foreach (range('A', 'F') as $col) {
+                $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
+                if ($cellValue !== '') {
+                    $hasData = true;
+                    break;
+                }
+            }
+            if (!$hasData) {
+                continue;
+            }
+
             $tin = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? "");
-            if (empty($tin)) { $skipped++; continue; }
+            if (empty($tin)) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing TIN";
+                continue;
+            }
 
             $num = function($col) use ($sheet, $row) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
@@ -47,32 +56,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $b_val = $sheet->getCell("B" . $row)->getCalculatedValue();
             $license_date = null;
-            $tax_year = null;
 
-            // Column B may be a date (license_date) or a year number
             if (is_numeric($b_val)) {
-                if ($b_val > 1900 && $b_val < 2100 && $b_val == (int)$b_val) {
-                    $tax_year = (int)$b_val;
-                } else {
-                    try {
-                        $dt = Date::excelToDateTimeObject($b_val);
-                        $license_date = $dt->format("Y-m-d");
-                        $tax_year = (int)$dt->format("Y");
-                    } catch (Exception $e) {
-                        $tax_year = (int)$b_val;
-                    }
-                }
-            } else {
-                $ts = strtotime($b_val);
-                if ($ts !== false) {
-                    $license_date = date("Y-m-d", $ts);
-                    $tax_year = (int)date("Y", $ts);
-                } else {
-                    $tax_year = (int)$b_val;
-                }
+                try { $license_date = Date::excelToDateTimeObject($b_val)->format("Y-m-d"); } catch (Exception $e) {}
+            } elseif (!empty($b_val)) {
+                try { $license_date = (new DateTime((string)$b_val))->format("Y-m-d"); } catch (Exception $e) {}
             }
 
-            if (!$tax_year) $tax_year = (int)date("Y");
+            $tax_year = (int)$sheet->getCell("F" . $row)->getCalculatedValue();
+            if ($tax_year <= 0) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing or invalid Year_data";
+                continue;
+            }
 
             $sale_value = $num("C");
             $actual_rate_val = $num("D");
@@ -104,8 +100,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $imported++;
         }
 
-        $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
-        $message .= "Skipped $skipped rows (missing TIN).<br>";
+        if ($imported > 0) {
+            $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
+            $message .= "Skipped $skipped rows.<br>";
+            $message .= "<a href='view_royalty.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
+            $message .= "<a href='te_royalty.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
+        } else {
+            $message = "<strong>No Royalty Fee records imported.</strong><br>The uploaded workbook appears to contain only headers or no complete data rows.";
+            $msg_type = "warning";
+        }
 
         if (!empty($error_log)) {
             $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
@@ -116,7 +119,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             if (!is_dir(__DIR__ . "/../data/logs")) mkdir(__DIR__ . "/../data/logs", 0777, true);
             file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
 
-            $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+            $message .= "<br><a href='download_log.php?log_id=" . urlencode($batch_id) . "' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
         }
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
@@ -178,10 +181,11 @@ require_once __DIR__ . "/../includes/header.php";
           <thead class="table-light"><tr><th>Col</th><th>Field</th></tr></thead>
           <tbody>
             <tr><td>A</td><td>TIN</td></tr>
-            <tr><td>B</td><td>Tax Year / License Date</td></tr>
+            <tr><td>B</td><td>Investment License Date</td></tr>
             <tr><td>C</td><td>Electricity Sale Value (LAK)</td></tr>
-            <tr><td>D</td><td>Actual Rate (%)</td></tr>
-            <tr><td>E</td><td>Fee Collected (LAK)</td></tr>
+            <tr><td>D</td><td>Royalty Fee Rate (%)</td></tr>
+            <tr><td>E</td><td>Royalty Fee Collected (LAK)</td></tr>
+            <tr><td>F</td><td>Tax Year</td></tr>
           </tbody>
         </table>
       </div>

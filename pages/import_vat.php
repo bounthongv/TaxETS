@@ -23,13 +23,78 @@ foreach ($prov_rows as $r) {
     $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']];
 }
 $prov_aliases = [
-    'BOLIKHAMSAI'  => '11', 'BOLIKHAMXAI'  => '11', 'BORIKHAMXAY'  => '11',
-    'XIANGKHOUANG' => '09', 'XIENGKHOUANG' => '09',
-    'VIENTIANE'    => '01', 'BOKEO'        => '05', 'LUANGPRABANG' => '06',
-    'LUANGPHRABANG' => '06', 'LUANGNAMTHA'  => '03', 'OUDOMXAY'     => '04',
-    'SAYABOURY'    => '08', 'SAYABURI'     => '08', 'XAYABOURY'    => '08',
-    'SARAVANE'     => '14', 'SEKONG'       => '15', 'XEKONG'       => '15',
-    'ATTAPEU'      => '17', 'ATTAPU'       => '17', 'XAISOMBOUN'   => '18',
+    // Province 01 - Vientiane Capital
+    'VIENTIANE'                => '01',
+    'VIENTIANE CAPITAL'        => '01',
+    'VIENTIANE CAPITAL PROVINCE' => '01',
+    'VIENTIANE PREFECTURE'     => '01',
+    'NAXAYTHONG'               => '01',
+    // Province 02 - Phongsaly
+    'PHONGSALY'                => '02',
+    'PHONGSALI'                => '02',
+    // Province 03 - Luangnamtha
+    'LUANGNAMTHA'              => '03',
+    'LUANG NAMTHA'             => '03',
+    'LUANGNAMTA'               => '03',
+    // Province 04 - Oudomxay
+    'OUDOMXAY'                 => '04',
+    'OUDOMXAI'                 => '04',
+    'UDOMXAY'                  => '04',
+    // Province 05 - Bokeo
+    'BOKEO'                    => '05',
+    // Province 06 - Luangprabang
+    'LUANGPRABANG'             => '06',
+    'LUANGPHRABANG'            => '06',
+    'LUANG PRABANG'            => '06',
+    'LUANG PHRA BANG'          => '06',
+    'LUANGPHRABANG'            => '06',
+    // Province 07 - Huaphanh
+    'HUAPHANH'                 => '07',
+    'HUAPHAN'                  => '07',
+    'HOUAPHAN'                 => '07',
+    'HOUAPHANH'                => '07',
+    // Province 08 - Sayaboury
+    'SAYABOURY'                => '08',
+    'SAYABURI'                 => '08',
+    'XAYABOURY'                => '08',
+    'XAYABURI'                 => '08',
+    // Province 09 - Xiengkhouang
+    'XIANGKHOUANG'             => '09',
+    'XIENGKHOUANG'             => '09',
+    'XIENG KHOUNG'             => '09',
+    'XIANG KHOANG'             => '09',
+    // Province 10 - Vientiane Province
+    'VIENTIANE PROVINCE'       => '10',
+    // Province 11 - Borikhamxay
+    'BOLIKHAMSAI'              => '11',
+    'BOLIKHAMXAI'              => '11',
+    'BORIKHAMXAY'              => '11',
+    'BORIKHAMXAI'              => '11',
+    // Province 12 - Khamouane
+    'KHAMOUANE'                => '12',
+    'KHAMMOUANE'               => '12',
+    'KHAMMUANE'                => '12',
+    // Province 13 - Savannakhet
+    'SAVANNAKHET'              => '13',
+    'SAVANAKHET'               => '13',
+    // Province 14 - Saravanh
+    'SARAVANH'                 => '14',
+    'SARAVANE'                 => '14',
+    // Province 15 - Xekong
+    'SEKONG'                   => '15',
+    'XEKONG'                   => '15',
+    // Province 16 - Champasak
+    'CHAMPASAK'                => '16',
+    'CHAMPASSAK'               => '16',
+    'CHAMPASSACK'              => '16',
+    // Province 17 - Attapeu
+    'ATTAPEU'                  => '17',
+    'ATTAPU'                   => '17',
+    'ATTAPUE'                  => '17',
+    // Province 18 - Xaisomboun
+    'XAISOMBOUN'               => '18',
+    'XAYSOMBOUN'               => '18',
+    'XAISOMBOU'                => '18',
 ];
 $dist_map = [];
 $dist_by_province = [];
@@ -53,9 +118,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
         $data = $sheet->toArray(null, true, false, true);
-        $batch_id = "BATCH_" . date("YmdHis");
+        $batch_id = "VAT_BATCH_" . date("YmdHis");
         $inserted = 0; $skipped = 0;
+        $unmapped_prov = 0;
         $error_log = [];
+        $empty_streak = 0;
 
         $cleanNum = function($val) {
             if (is_numeric($val)) return (float)$val;
@@ -78,10 +145,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         foreach ($data as $index => $row) {
             if ($index <= 1) continue; // Skip header rows
             $tin = trim($row["B"] ?? "");
-            if (empty($tin)) { $skipped++; continue; }
+
+            $is_empty_row = true;
+            foreach (range("A", "K") as $col) {
+                if (trim((string)($row[$col] ?? "")) !== "") {
+                    $is_empty_row = false;
+                    break;
+                }
+            }
+
+            if ($is_empty_row) {
+                $empty_streak++;
+                if ($empty_streak >= 20) break; // Stop after trailing empty template rows.
+                continue;
+            }
+
+            if (empty($tin)) {
+                $empty_streak = 0;
+                $skipped++;
+                $error_log[] = "Row $index: TIN is required";
+                continue;
+            }
+            $empty_streak = 0;
 
             // Smart Mapping: Province
             $raw_prov = trim($row["A"] ?? "");
+            // Strip "Province"/"Prefecture" suffix for robust matching
+            $stripped_prov = preg_replace('/\s+(Province|Prefecture)\s*$/i', '', $raw_prov);
+            if (strtoupper($stripped_prov) !== 'VIENTIANE') {
+                $raw_prov = $stripped_prov;
+            }
             $upper_prov = strtoupper($raw_prov);
             $prov_match = $prov_map[$upper_prov] ?? null;
             if (!$prov_match && isset($prov_aliases[$upper_prov])) {
@@ -103,6 +196,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             }
             $pro_id = $prov_match['pro_id'] ?? null;
             if (!$pro_id && !empty($raw_prov)) {
+                $unmapped_prov++;
                 $error_log[] = "Row $index: Unknown Province '$raw_prov'";
             }
             $official_province = $prov_match['name'] ?? $raw_prov;
@@ -119,8 +213,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 "filing_type"                => $row["D"] ?? "",
                 "filing_period"              => $period,
                 "input_date"                 => $input_date,
-                "purchase_domestic_nonexempt"=> $cleanNum($row["H"] ?? 0),
-                "purchase_domestic_exempt"   => $cleanNum($row["I"] ?? 0),
+                "purchase_domestic_nonexempt"=> 0,  // column H is Rate(%), not purchase
+                "purchase_domestic_exempt"   => 0,  // col I is exempt SALES, mapped to sales_exempt below
                 "purchase_import_nonexempt"  => 0,
                 "purchase_import_exempt"     => 0,
                 "total_input_vat"            => 0,
@@ -131,7 +225,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 "vat_payable"                => 0,
                 "vat_credit"                 => 0,
                 "expert_te"                  => $cleanNum($row["J"] ?? 0),
-                "provision_number"           => $row["AG"] ?? ""
+                "provision_number"           => $row["K"] ?? ""
             ];
 
             $cols = implode(", ", array_keys($data));
@@ -140,10 +234,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $inserted++;
         }
 
-        $message = "<strong>Import Success!</strong> Imported $inserted records.<br>";
-        $message .= "Skipped $skipped rows (missing TIN).<br>";
+        if ($inserted > 0) {
+            $message = "<strong>Import Success!</strong> Imported $inserted records.<br>";
+        } else {
+            $message = "<strong>No Domestic VAT records imported.</strong> Add data rows to the template and upload again.<br>";
+            $msg_type = "warning";
+        }
+        if ($skipped > 0) {
+            $message .= "Warning: Skipped $skipped row(s) with data but no TIN.<br>";
+        }
+        $message .= $unmapped_prov === 0
+            ? "All provinces mapped.<br>"
+            : "Warning: $unmapped_prov row(s) have unknown province names. Review the imported data and error log.<br>";
+        $message .= "Processed up to row " . ($index - 1) . " of " . count($data) . " total rows in sheet.<br>";
+        if ($inserted > 0) {
+            $message .= "<br><a href='view_vat.php?batch=$batch_id' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
+        }
 
         if (!empty($error_log)) {
+            $msg_type = "warning";
             $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
             $log_content .= "Batch: $batch_id\r\n";
             $log_content .= "----------------------------------------\r\n";
@@ -152,7 +261,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             if (!is_dir(__DIR__ . "/../data/logs")) mkdir(__DIR__ . "/../data/logs", 0777, true);
             file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
 
-            $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+            $message .= "<a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Error Log</a>";
         }
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
@@ -211,10 +320,11 @@ require_once __DIR__ . "/../includes/header.php";
             <tr><td>D</td><td>Filing Type</td></tr>
             <tr><td>E</td><td>Filing Period</td></tr>
             <tr><td>F</td><td>Input Date</td></tr>
-            <tr><td>G</td><td><em>Rate (auto-calculated)</em></td></tr>
-            <tr><td>H</td><td>Domestic Non-Exempt Purchases</td></tr>
-            <tr><td>I</td><td>Domestic Exempt Purchases / Exempt Sales</td></tr>
+            <tr><td>G</td><td>Description of the Sale</td></tr>
+            <tr><td>H</td><td>VAT Rate (%)</td></tr>
+            <tr><td>I</td><td>Domestic Sale Exemption</td></tr>
             <tr><td>J</td><td>Expert TE</td></tr>
+            <tr><td>K</td><td>Provision Number</td></tr>
           </tbody>
         </table>
       </div>

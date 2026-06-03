@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+
 $pdo = getDbConnection();
 
 $batch = $_GET["batch"] ?? "";
@@ -143,7 +144,6 @@ require_once __DIR__ . "/../includes/header.php";
           <th>Province</th>
           <th>Period</th>
           <th class="text-end">Exempt Sales</th>
-          <th class="text-end">Expert TE</th>
           <th>Provision</th>
           <th class="text-center">Action</th>
         </tr>
@@ -166,7 +166,6 @@ require_once __DIR__ . "/../includes/header.php";
           </td>
           <td><?= $period_display ?></td>
           <td class="text-end"><?= number_format((float)($r["sales_exempt"] ?? 0), 0) ?></td>
-          <td class="text-end text-info fw-bold"><?= number_format((float)($r["expert_te"] ?? 0), 0) ?></td>
           <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($r["provision_number"] ?: '-') ?></span></td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-primary" onclick='editRecord(<?= (int)$r["id"] ?>)'>

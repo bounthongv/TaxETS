@@ -33,13 +33,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
-        $batch_id = "BATCH_" . date("YmdHis");
+        $batch_id = "SALARY_BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
 
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+        $max_row = $sheet->getHighestRow();
+        $empty_streak = 0;
+        for ($row = 2; $row <= $max_row; $row++) {
             $tin = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? "");
-            if (empty($tin)) { $skipped++; continue; }
+
+            $is_empty_row = true;
+            foreach (range("A", "N") as $col) {
+                $cell_value = $sheet->getCell($col . $row)->getCalculatedValue();
+                if (trim((string)($cell_value ?? "")) !== "") {
+                    $is_empty_row = false;
+                    break;
+                }
+            }
+
+            if ($is_empty_row) {
+                $empty_streak++;
+                if ($empty_streak >= 20) break; // Stop after trailing empty template rows.
+                continue;
+            }
+
+            if (empty($tin)) {
+                $empty_streak = 0;
+                $skipped++;
+                $error_log[] = "Row $row: TIN is required";
+                continue;
+            }
+            $empty_streak = 0;
 
             $num = function($col) use ($sheet, $row) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
@@ -54,6 +78,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                     $d = Date::excelToDateTimeObject($input_date_val);
                     $input_date = $d->format("Y-m-d");
                 } catch (Exception $e) {}
+            } elseif (!empty($input_date_val)) {
+                try {
+                    $d = new DateTime((string)$input_date_val);
+                    $input_date = $d->format("Y-m-d");
+                } catch (Exception $e) {
+                    $error_log[] = "Row $row: Invalid input date '" . $input_date_val . "'";
+                }
             }
 
             $b_val = $sheet->getCell("B" . $row)->getCalculatedValue();
@@ -90,8 +121,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $imported++;
         }
 
-        $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
-        $message .= "Skipped $skipped rows (missing TIN).<br>";
+        if ($imported > 0) {
+            $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
+        } else {
+            $message = "<strong>No Salary Tax records imported.</strong> Add data rows to the template and upload again.<br>";
+            $msg_type = "warning";
+        }
+        if ($skipped > 0) {
+            $message .= "Warning: Skipped $skipped row(s) with data but no TIN.<br>";
+        }
+        $message .= "Processed up to row " . ($row - 1) . " of $max_row total rows in sheet.<br>";
 
         if (!empty($error_log)) {
             $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";

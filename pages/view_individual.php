@@ -66,15 +66,6 @@ $amount_fields = [
     '29' => 'amount_29'
 ];
 
-$expert_fields = [
-    '21' => 'expert_te_21', '22' => 'expert_te_22',
-    '23_1' => 'expert_te_23_1', '23_2' => 'expert_te_23_2',
-    '24' => 'expert_te_24', '25' => 'expert_te_25',
-    '26' => 'expert_te_26', '27' => 'expert_te_27',
-    '28_1' => 'expert_te_28_1', '28_2' => 'expert_te_28_2',
-    '29' => 'expert_te_29'
-];
-
 $prov_names = [
     "21" => "Overtime/Night Shift",
     "22" => "Severance/Redundancy",
@@ -162,7 +153,6 @@ require_once __DIR__ . "/../includes/header.php";
           <th>Filing Date</th>
           <th class="text-end">Total Income</th>
           <th class="text-center">SS Member</th>
-          <th class="text-end text-info">Expert TE</th>
           <th class="text-center">Action</th>
         </tr>
       </thead>
@@ -186,7 +176,6 @@ require_once __DIR__ . "/../includes/header.php";
               <?= $r["is_ss_member"] ? "YES" : "NO" ?>
             </span>
           </td>
-          <td class="text-end text-info fw-bold"><?= number_format((float)($r["expert_te_total"] ?? 0), 0) ?></td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-primary" onclick='editRecord(<?= (int)$r["id"] ?>)'>
               <i class="fas fa-edit"></i>
@@ -246,24 +235,6 @@ require_once __DIR__ . "/../includes/header.php";
                 <input type="number" step="0.01" name="<?= $col ?>" id="edit_<?= $col ?>" class="form-control form-control-sm">
               </div>
               <?php endforeach; ?>
-            </div>
-          </div>
-
-          <div class="card bg-light border-0 mb-3">
-            <div class="card-header bg-transparent fw-bold py-2">
-              <i class="fas fa-calculator me-2 text-info"></i> Expert TE Calculations
-            </div>
-            <div class="card-body row">
-              <?php foreach ($expert_fields as $key => $col): ?>
-              <div class="col-md-3 mb-2">
-                <label class="form-label small text-muted mb-1"><?= htmlspecialchars($prov_names[$key] ?? "TE $key") ?></label>
-                <input type="number" step="0.01" name="<?= $col ?>" id="edit_<?= $col ?>" class="form-control form-control-sm">
-              </div>
-              <?php endforeach; ?>
-              <div class="col-md-3 mb-2">
-                <label class="form-label small text-muted mb-1 fw-bold">Expert TE Total</label>
-                <input type="number" step="0.01" name="expert_te_total" id="edit_expert_te_total" class="form-control form-control-sm border-primary">
-              </div>
             </div>
           </div>
 
@@ -334,13 +305,6 @@ function editRecord(id) {
     <?php foreach ($amount_fields as $col): ?>
     document.getElementById('edit_<?= $col ?>').value = r.<?= $col ?> || 0;
     <?php endforeach; ?>
-    
-    // Set expert TE fields
-    <?php foreach ($expert_fields as $col): ?>
-    document.getElementById('edit_<?= $col ?>').value = r.<?= $col ?> || 0;
-    <?php endforeach; ?>
-    
-    document.getElementById('edit_expert_te_total').value = r.expert_te_total || 0;
     document.getElementById('edit_is_ss_member').checked = (r.is_ss_member == 1);
     
     new bootstrap.Modal(document.getElementById('editModal')).show();

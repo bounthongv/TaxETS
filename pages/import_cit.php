@@ -13,6 +13,24 @@ $pdo = getDbConnection();
 $message = "";
 $msg_type = "success";
 
+// Handle calculation redirect back from calculator.php
+if (isset($_GET["calc_done"])) {
+    $count = (int)($_GET["count"] ?? 0);
+    $total = (float)($_GET["total_te"] ?? 0);
+    $err = (int)($_GET["errors"] ?? 0);
+    $batch_name = htmlspecialchars($_GET["batch"] ?? "");
+    if ($err > 0) {
+        $message = "Calculation completed with <span class='text-warning'>{$err} issue(s)</span>: "
+                 . "<strong>{$count} companies</strong> processed for batch <code>{$batch_name}</code>. "
+                 . "Total TE = <strong>" . number_format($total, 0) . " LAK</strong>";
+        $msg_type = "warning";
+    } elseif ($count > 0) {
+        $message = "Calculation complete! Batch <code>{$batch_name}</code>: "
+                 . "<strong>{$count} companies</strong> processed. "
+                 . "Total TE = <strong>" . number_format($total, 0) . " LAK</strong>";
+    }
+}
+
 // --- Handle Upload ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
     try {
@@ -40,16 +58,121 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         $prov_map = []; foreach ($prov_rows as $r) { $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']]; }
         $prov_aliases = [
-            'BOLIKHAMSAI'  => '11', 'BOLIKHAMXAI'  => '11', 'BORIKHAMXAY'  => '11',
-            'XIANGKHOUANG' => '09', 'XIENGKHOUANG' => '09',
-            'VIENTIANE'    => '01',
-            'BOKEO'        => '05', 'LUANGPRABANG' => '06', 'LUANGPHRABANG' => '06',
-            'LUANGNAMTHA'  => '03', 'OUDOMXAY'     => '04',
-            'SAYABOURY'    => '08', 'SAYABURI'     => '08', 'XAYABOURY' => '08',
-            'SARAVANE'     => '14', 'SEKONG'       => '15', 'XEKONG' => '15',
-            'ATTAPEU'      => '17', 'ATTAPU'       => '17', 'XAISOMBOUN' => '18',
+            // Province 01 - Vientiane Capital
+            'VIENTIANE'                => '01',
+            'VIENTIANE CAPITAL'        => '01',
+            'VIENTIANE CAPITAL PROVINCE' => '01',
+            'VIENTIANE PREFECTURE'     => '01',
+            'NAXAYTHONG'               => '01',
+            // Province 02 - Phongsaly
+            'PHONGSALY'                => '02',
+            'PHONGSALI'                => '02',
+            // Province 03 - Luangnamtha
+            'LUANGNAMTHA'              => '03',
+            'LUANG NAMTHA'             => '03',
+            'LUANGNAMTA'               => '03',
+            // Province 04 - Oudomxay
+            'OUDOMXAY'                 => '04',
+            'OUDOMXAI'                 => '04',
+            'UDOMXAY'                  => '04',
+            // Province 05 - Bokeo
+            'BOKEO'                    => '05',
+            // Province 06 - Luangprabang
+            'LUANGPRABANG'             => '06',
+            'LUANGPHRABANG'            => '06',
+            'LUANG PRABANG'            => '06',
+            'LUANG PHRA BANG'          => '06',
+            'LUANGPHRABANG'            => '06',
+            // Province 07 - Huaphanh
+            'HUAPHANH'                 => '07',
+            'HUAPHAN'                  => '07',
+            'HOUAPHAN'                 => '07',
+            'HOUAPHANH'                => '07',
+            // Province 08 - Sayaboury
+            'SAYABOURY'                => '08',
+            'SAYABURI'                 => '08',
+            'XAYABOURY'                => '08',
+            'XAYABURI'                 => '08',
+            // Province 09 - Xiengkhouang
+            'XIANGKHOUANG'             => '09',
+            'XIENGKHOUANG'             => '09',
+            'XIENG KHOUNG'             => '09',
+            'XIANG KHOANG'             => '09',
+            // Province 10 - Vientiane Province
+            'VIENTIANE PROVINCE'       => '10',
+            // Province 11 - Borikhamxay
+            'BOLIKHAMSAI'              => '11',
+            'BOLIKHAMXAI'              => '11',
+            'BORIKHAMXAY'              => '11',
+            'BORIKHAMXAI'              => '11',
+            // Province 12 - Khamouane
+            'KHAMOUANE'                => '12',
+            'KHAMMOUANE'               => '12',
+            'KHAMMUANE'                => '12',
+            // Province 13 - Savannakhet
+            'SAVANNAKHET'              => '13',
+            'SAVANAKHET'               => '13',
+            // Province 14 - Saravanh
+            'SARAVANH'                 => '14',
+            'SARAVANE'                 => '14',
+            // Province 15 - Xekong
+            'SEKONG'                   => '15',
+            'XEKONG'                   => '15',
+            // Province 16 - Champasak
+            'CHAMPASAK'                => '16',
+            'CHAMPASSAK'               => '16',
+            'CHAMPASSACK'              => '16',
+            // Province 17 - Attapeu
+            'ATTAPEU'                  => '17',
+            'ATTAPU'                   => '17',
+            'ATTAPUE'                  => '17',
+            // Province 18 - Xaisomboun
+            'XAISOMBOUN'               => '18',
+            'XAYSOMBOUN'               => '18',
+            'XAISOMBOU'                => '18',
         ];
         $sect_map = []; foreach ($sect_rows as $r) { $sect_map[strtoupper(trim($r['sector_name']))] = $r['id']; }
+        $sect_aliases = [
+            'CONSTRUCTION'       => 'Infrastructure & Construction',
+            'INFRASTRUCTURE'     => 'Infrastructure & Construction',
+            'AGRICULTURE'        => 'Agriculture',
+            'AGRICULTURE & PROCESSING' => 'Agriculture & Processing',
+            'AGRI'               => 'Agriculture',
+            'TRADE'              => 'Commerce',
+            'TRADING'            => 'Commerce',
+            'SERVICE'            => 'Service',
+            'SERVICES'           => 'Service',
+            'HOTEL'              => 'Hotel and Restaurant',
+            'RESTAURANT'         => 'Hotel and Restaurant',
+            'BANK'               => 'Banking',
+            'BANKING'            => 'Banking',
+            'MINING'             => 'Mining',
+            'ENERGY'             => 'Energy',
+            'EDUCATION'          => 'Education',
+            'CONSULTANCY'        => 'Consultancy',
+            'CONSULTING'         => 'Consultancy',
+            'MANUFACTURING'      => 'Manufacturing',
+            'MANUFACTURE'        => 'Manufacturing',
+            'INDUSTRY'           => 'Industrial & Manufacturing',
+            'INDUSTRIAL'         => 'Industrial & Manufacturing',
+            'PRODUCTION'         => 'Production',
+            'HEALTH'             => 'Public health',
+            'PUBLIC HEALTH'      => 'Public health',
+            'ELECTRICITY'        => 'Electricity',
+            'REAL ESTATE'        => 'Real estate activities',
+            'PROPERTY'           => 'Real estate activities',
+            'PROFESSIONAL'       => 'Professional, scientific and technical activities',
+            'SCIENCE'            => 'Professional, scientific and technical activities',
+            'HANDICRAFT'         => 'Industry and Handicraft',
+            'HOUSEHOLD'          => 'Activities of households',
+            'EXTRATERRITORIAL'   => 'Activities of extraterritorial organizations and bodies',
+            'PUBLIC ADMIN'       => 'Public administration and defence; compulsory social security',
+            'DEFENCE'            => 'Public administration and defence; compulsory social security',
+            'ARTS'               => 'Arts, entertainment and recreation',
+            'ENTERTAINMENT'      => 'Arts, entertainment and recreation',
+            'WATER SUPPLY'       => 'Water supply; sewerage, waste management and remediation activities',
+            'WASTE'              => 'Water supply; sewerage, waste management and remediation activities',
+        ];
         
         $dist_map = []; 
         $dist_by_province = [];
@@ -85,6 +208,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $excel_year = (int)$sheet->getCell("A" . $row)->getCalculatedValue();
             
             $raw_prov = trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
+            // Strip "Province"/"Prefecture" suffix so "Vientiane Capital Province" → "Vientiane Capital"
+            // BUT preserve "Vientiane Province" which has distinct meaning from Vientiane Capital
+            $stripped_prov = preg_replace('/\s+(Province|Prefecture)\s*$/i', '', $raw_prov);
+            if (strtoupper($stripped_prov) !== 'VIENTIANE') {
+                $raw_prov = $stripped_prov;
+            }
             $raw_dist = trim($sheet->getCell("F" . $row)->getCalculatedValue() ?? '');
             $raw_sect = trim($sheet->getCell("J" . $row)->getCalculatedValue() ?? '');
 
@@ -140,6 +269,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $sector_id = $sect_map[strtoupper($raw_sect)] ?? null;
             if (!$sector_id && !empty($raw_sect)) {
+                // Try sector alias table
+                $alias_key = strtoupper($raw_sect);
+                $alias_target = $sect_aliases[$alias_key] ?? null;
+                if ($alias_target) {
+                    $sector_id = $sect_map[strtoupper($alias_target)] ?? null;
+                }
+            }
+            if (!$sector_id && !empty($raw_sect)) {
+                // Fuzzy match via levenshtein
+                $upper_sect = strtoupper(trim($raw_sect));
+                $best_score = 999; $best_sect_id = null; $best_sect_name = '';
+                foreach ($sect_map as $sname => $sid) {
+                    $score = levenshtein($upper_sect, $sname);
+                    if ($score < $best_score) { $best_score = $score; $best_sect_id = $sid; $best_sect_name = $sname; }
+                }
+                $threshold = strlen($upper_sect) > 10 ? 5 : 3;
+                if ($best_score <= $threshold && $best_sect_id) {
+                    $sector_id = $best_sect_id;
+                    $raw_sect = $best_sect_name; // use official name
+                }
+            }
+            if (!$sector_id && !empty($raw_sect)) {
                 $unmapped_sect++;
                 $error_log[] = "Row $row: Unknown Sector '$raw_sect'";
             }
@@ -178,11 +329,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 "is_vat_holder"              => $flag("AL"),
                 "reinvest_date"              => $dateVal("AM"),
                 "reinvest_amount"            => (float)$sheet->getCell("AN" . $row)->getCalculatedValue(),
-                "total_assets"               => (float)$sheet->getCell("AO" . $row)->getCalculatedValue(),
-                "annual_turnover"            => (float)$sheet->getCell("AP" . $row)->getCalculatedValue(),
+                "total_assets"               => (float)$sheet->getCell("AO" . $row)->getCalculatedValue() * 1000000000,
+                "annual_turnover"            => (float)$sheet->getCell("AP" . $row)->getCalculatedValue() * 1000000000,
                 "staff_count"                => (int)$sheet->getCell("AQ" . $row)->getCalculatedValue(),
                 "stock_exchange_listing_date" => $dateVal("AR"),
                 "registration_date"          => $dateVal("T"),
+                "expert_te"                  => (float)($sheet->getCell("BO" . $row)->getCalculatedValue() ?? 0),
             ];
 
             $cols = implode(", ", array_keys($data));
@@ -214,7 +366,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
     }
 }
 
-$recent = $pdo->query("SELECT import_batch_id, tax_year, COUNT(*) as `rows`, MAX(id) as lid FROM companies GROUP BY import_batch_id, tax_year ORDER BY lid DESC LIMIT 15")->fetchAll();
+$recent = $pdo->query("SELECT import_batch_id, 
+                       COUNT(*) as total_rows,
+                       MIN(tax_year) as min_year,
+                       MAX(tax_year) as max_year,
+                       GROUP_CONCAT(DISTINCT tax_year ORDER BY tax_year SEPARATOR ',') as year_list,
+                       MAX(id) as lid 
+                       FROM companies 
+                       GROUP BY import_batch_id 
+                       ORDER BY lid DESC 
+                       LIMIT 15")->fetchAll();
 require_once __DIR__ . "/../includes/header.php";
 ?>
 
@@ -247,6 +408,9 @@ require_once __DIR__ . "/../includes/header.php";
           <div class="mb-3">
             <label class="form-label fw-bold">Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
+            <div class="form-text mt-2 small">
+                <a href="generate_cit_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Template</a>
+            </div>
           </div>
           <div class="d-grid"><button type="submit" class="btn btn-primary btn-lg" id="importBtn">Import</button></div>
         </form>
@@ -269,8 +433,8 @@ require_once __DIR__ . "/../includes/header.php";
           <table class="table table-hover mb-0">
             <thead class="table-light"><tr><th>Batch / Source</th><th>Year</th><th>Rows</th><th>Actions</th></tr></thead>
             <tbody>
-              <?php foreach ($recent as $r): ?>
-              <?php 
+              <?php foreach ($recent as $r): 
+                $years = explode(',', $r["year_list"]); 
                 $is_manual = (strpos($r["import_batch_id"], 'MANUAL') !== false); 
                 $log_file = __DIR__ . "/../data/logs/" . $r["import_batch_id"] . ".log";
                 $has_log = file_exists($log_file);
@@ -280,11 +444,25 @@ require_once __DIR__ . "/../includes/header.php";
                     <small class="font-monospace"><?= htmlspecialchars($r["import_batch_id"]) ?></small>
                     <?php if($is_manual): ?><span class="badge bg-info ms-1">MANUAL</span><?php endif; ?>
                 </td>
-                <td><?= $r["tax_year"] ?></td>
-                <td><span class="badge bg-success rounded-pill"><?= $r["rows"] ?></span></td>
+                <td>
+                    <?php if ($r["min_year"] == $r["max_year"]): ?>
+                        <?= $r["min_year"] ?>
+                    <?php else: ?>
+                        <?php foreach ($years as $y): ?>
+                        <span class="badge bg-secondary me-1"><?= $y ?></span>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </td>
+                <td><span class="badge bg-success rounded-pill"><?= $r["total_rows"] ?></span></td>
                 <td>
                   <a href="view_companies.php?batch=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
-                  <a href="calculator.php?batch=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
+                  <form method="POST" action="calculator.php" class="d-inline" 
+                        onsubmit="var b=this.querySelector('button');b.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i>';b.disabled=true">
+                    <input type="hidden" name="action" value="calculate">
+                    <input type="hidden" name="batch_id" value="<?= htmlspecialchars($r["import_batch_id"]) ?>">
+                    <input type="hidden" name="return_to" value="import_cit">
+                    <button class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></button>
+                  </form>
                   <?php if($has_log): ?>
                     <a href="download_log.php?log_id=<?= urlencode($r["import_batch_id"]) ?>" class="btn btn-sm btn-outline-danger" title="Download Log"><i class="fas fa-file-alt"></i></a>
                   <?php endif; ?>

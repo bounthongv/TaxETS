@@ -45,29 +45,56 @@ class TESalaryTaxEngine {
 
     public function calculateSalaryTax(array $row): array {
         // For aggregate salary tax, we use the reported Tax Exempt Amount as the basis for TE.
-        // TE = Tax Exempt Amount * Standard Benchmark Rate (e.g., 10%)
-        // Or Benchmark = Tax Amount + (Tax Exempt Amount * Rate)
-        
+        // TE = Tax Exempt Amount * Benchmark Rate (from bm_salary_rates)
+        // Benchmark = Tax Amount + TE
+
         $tax_exempt_amount = (float)($row['tax_exempt_amount'] ?? 0);
         $tax_amount = (float)($row['tax_amount'] ?? 0);
-        $total_taxable_amount = (float)($row['total_taxable_amount'] ?? 0);
+        $tax_year = (int)($row['tax_year'] ?? date('Y'));
+        $provision_number = $row['provision_number'] ?? '';
 
-        // Standard Benchmark Rate for Salary Tax (could be fetched from a config table)
-        // Here we default to 10% as a reasonable average for progressive PIT benchmarks 
-        // if no specific bracket info is available.
-        $benchmark_rate = 10.0; 
+        // Look up the benchmark rate from the reference table
+        $benchmark_rate = $this->lookupRate($tax_year, $provision_number);
 
-        // Benchmark Tax = (Taxable Amount + Exempt Amount) * Rate
-        // But since Taxable Amount already had some tax paid ($tax_amount), 
-        // it's more accurate to say TE is the tax NOT paid on the exempt amount.
+        // TE = exempt amount × benchmark rate
         $te_amount = $tax_exempt_amount * ($benchmark_rate / 100);
         $benchmark_tax = $tax_amount + $te_amount;
 
         return [
             'benchmark_tax' => round($benchmark_tax, 2),
             'te_amount' => round($te_amount, 2),
-            'provision_number' => $row['provision_number'] ?: 'Multiple'
+            'provision_number' => $provision_number ?: 'Multiple'
         ];
+    }
+
+    /**
+     * Look up the benchmark rate for a given year and provision number.
+     * Falls back to the configured Multiple/default provision rate.
+     */
+    private function lookupRate(int $year, string $provision_number): float {
+        if (empty($provision_number)) {
+            $provision_number = 'Multiple';
+        }
+
+        // Try exact provision match first
+        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_salary_rates WHERE start_year <= ? AND end_year >= ? AND provision_number = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$year, $year, $provision_number]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return (float)$row['rate_percentage'];
+        }
+
+        // Fallback: try 'Multiple' / default
+        $stmt2 = $this->pdo->prepare("SELECT rate_percentage FROM bm_salary_rates WHERE start_year <= ? AND end_year >= ? AND provision_number = 'Multiple' ORDER BY id DESC LIMIT 1");
+        $stmt2->execute([$year, $year]);
+        $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+
+        if ($row2) {
+            return (float)$row2['rate_percentage'];
+        }
+
+        throw new Exception("No salary benchmark rate configured for provision {$provision_number} in {$year}");
     }
 
     public function getBatchSummary(string $batch_id): array {

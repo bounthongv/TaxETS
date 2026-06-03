@@ -21,7 +21,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['clear_results'])) {
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['calculate_batch'])) {
     $bid = $_POST['batch_id'];
     $res = $engine->calculateBatch($bid);
-    $message = "Calculation complete! <strong>{$res['calculated']}</strong> records processed. Total TE: <strong>" . number_format($res['total_te'], 2) . "</strong>";
+    if (empty($res['errors'])) {
+        $message = "Calculation complete! <strong>{$res['calculated']}</strong> records processed. Total TE: <strong>" . number_format($res['total_te'], 2) . "</strong>";
+    } else {
+        $message = "Calculated with " . count($res['errors']) . " errors: " . htmlspecialchars(implode("; ", array_slice($res['errors'], 0, 3)));
+        $msg_type = "warning";
+    }
     $current_batch = $bid;
 }
 

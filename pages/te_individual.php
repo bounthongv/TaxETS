@@ -3,10 +3,15 @@ require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
 require_once __DIR__ . "/../includes/te_pit_engine.php";
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $pdo = getDbConnection();
 $batch = $_GET['batch'] ?? '';
 $message = '';
 $msg_type = 'success';
+$is_admin = ($_SESSION["user_email"] ?? '') === "admin@example.com";
 
 // Handle Calculate action
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "calculate" && !empty($_POST["batch_id"])) {
@@ -85,15 +90,17 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm bg-success text-white text-center py-3">
             <div class="fs-5 fw-bold"><?= number_format($total_engine_te) ?></div>
-            <div class="small opacity-75">Engine TE</div>
+            <div class="small opacity-75"><?= $is_admin ? "Engine TE" : "TE" ?></div>
         </div>
     </div>
+    <?php if ($is_admin): ?>
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm bg-warning text-white text-center py-3">
             <div class="fs-5 fw-bold"><?= number_format($total_expert_te) ?></div>
             <div class="small opacity-75">Expert TE</div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <div class="card shadow-sm">
@@ -107,14 +114,24 @@ require_once __DIR__ . "/../includes/header.php";
         </div>
         <?php else: ?>
         <table class="table table-hover mb-0">
-            <thead class="table-light"><tr><th>Batch</th><th>Records</th><th class="text-end">Engine TE</th><th class="text-end">Expert TE</th><th>Actions</th></tr></thead>
+            <thead class="table-light">
+                <tr>
+                    <th>Batch</th>
+                    <th>Records</th>
+                    <th class="text-end"><?= $is_admin ? "Engine TE" : "TE" ?></th>
+                    <?php if ($is_admin): ?><th class="text-end">Expert TE</th><?php endif; ?>
+                    <th>Actions</th>
+                </tr>
+            </thead>
             <tbody>
                 <?php foreach ($batches as $b): ?>
                 <tr>
                     <td><small class="font-monospace"><?= htmlspecialchars($b["batch_id"]) ?></small></td>
                     <td><span class="badge bg-primary rounded-pill px-3"><?= number_format($b["rows"]) ?></span></td>
                     <td class="text-end fw-bold text-success"><?= number_format($b["total_te"]) ?></td>
+                    <?php if ($is_admin): ?>
                     <td class="text-end fw-bold text-info"><?= number_format($b["total_expert"]) ?></td>
+                    <?php endif; ?>
                     <td>
                         <form method="POST" class="d-inline">
                             <input type="hidden" name="action" value="calculate">
@@ -199,15 +216,17 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm bg-success text-white text-center py-3">
             <div class="fs-5 fw-bold"><?= number_format($total_engine_te) ?></div>
-            <div class="small opacity-75">Engine TE</div>
+            <div class="small opacity-75"><?= $is_admin ? "Engine TE" : "TE" ?></div>
         </div>
     </div>
+    <?php if ($is_admin): ?>
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm bg-warning text-white text-center py-3">
             <div class="fs-5 fw-bold"><?= number_format($total_expert_te) ?></div>
             <div class="small opacity-75">Expert TE</div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <div class="card mb-3 border-0 shadow-sm">
@@ -246,8 +265,11 @@ require_once __DIR__ . "/../includes/header.php";
                     <th class="text-end">Total Income</th>
                     <th class="text-center">SS Member</th>
                     <th class="text-end table-info">BM TE</th>
-                    <th class="text-end table-success">Engine TE</th>
-                    <th class="text-end">Expert TE</th>
+                    <th class="text-end table-success"><?= $is_admin ? "Engine TE" : "TE" ?></th>
+                    <?php if ($is_admin): ?>
+                    <th class="text-end table-warning">Expert TE</th>
+                    <th class="text-center" style="width:40px">Δ</th>
+                    <?php endif; ?>
                     <th>Provisions</th>
                 </tr>
             </thead>
@@ -260,8 +282,9 @@ require_once __DIR__ . "/../includes/header.php";
                     }
                     $engine_te = (float)($r['engine_te'] ?? 0);
                     $expert_te = (float)($r['expert_te_total'] ?? 0);
+                    $has_diff = $is_admin && $expert_te > 0 && abs($engine_te - $expert_te) > 0.01;
                 ?>
-                <tr>
+                <tr class="<?= $has_diff ? 'table-warning' : '' ?>">
                     <td><?= $i + 1 ?></td>
                     <td><?= $r["tax_year"] ?></td>
                     <td class="font-monospace fw-bold"><?= htmlspecialchars($r["ptin"]) ?></td>
@@ -275,7 +298,23 @@ require_once __DIR__ . "/../includes/header.php";
                     </td>
                     <td class="text-end fw-bold text-info"><?= number_format($r["benchmark_calculated_tax"] ?? 0, 0) ?></td>
                     <td class="text-end fw-bold text-success"><?= number_format($engine_te, 0) ?></td>
-                    <td class="text-end fw-bold"><?= number_format($expert_te, 0) ?></td>
+                    <?php if ($is_admin): ?>
+                    <td class="text-end fw-bold text-warning"><?= number_format($expert_te, 0) ?></td>
+                    <td class="text-center">
+                        <?php if ($expert_te > 0): ?>
+                            <?php $diff = $engine_te - $expert_te; ?>
+                            <?php if (abs($diff) > 0.01): ?>
+                                <span class="badge bg-<?= abs($diff) > 1000000 ? 'danger' : 'warning' ?> text-dark" title="Engine TE - Expert TE">
+                                    <?= $diff > 0 ? '+' : '' ?><?= number_format($diff, 0) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-success" title="Matches Expert TE">✓</span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="text-muted">—</span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
                     <td>
                         <?php if ($r["matched_provisions"]): ?>
                             <?php foreach (explode(",", $r["matched_provisions"]) as $pn): ?>
@@ -288,7 +327,7 @@ require_once __DIR__ . "/../includes/header.php";
                 </tr>
                 <?php endforeach; ?>
                 <?php if (empty($rows)): ?>
-                <tr><td colspan="11" class="text-center p-4 text-muted">No records found for this batch.</td></tr>
+                <tr><td colspan="<?= $is_admin ? 12 : 10 ?>" class="text-center p-4 text-muted">No records found for this batch.</td></tr>
                 <?php endif; ?>
             </tbody>
             <tfoot>
@@ -298,7 +337,19 @@ require_once __DIR__ . "/../includes/header.php";
                     <td></td>
                     <td class="text-end text-info"><?= number_format(array_sum(array_column($rows, 'benchmark_calculated_tax')), 0) ?></td>
                     <td class="text-end text-success"><?= number_format($total_engine_te, 0) ?></td>
-                    <td class="text-end"><?= number_format($total_expert_te, 0) ?></td>
+                    <?php if ($is_admin): ?>
+                    <td class="text-end text-warning"><?= number_format($total_expert_te, 0) ?></td>
+                    <td class="text-center">
+                        <?php $total_diff = $total_engine_te - $total_expert_te; ?>
+                        <?php if (abs($total_diff) > 0.01): ?>
+                            <span class="badge bg-<?= abs($total_diff) > 1000000 ? 'danger' : 'warning' ?> text-dark">
+                                <?= $total_diff > 0 ? '+' : '' ?><?= number_format($total_diff, 0) ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="text-success">✓</span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
                     <td></td>
                 </tr>
             </tfoot>

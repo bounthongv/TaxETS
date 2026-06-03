@@ -13,15 +13,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     try {
         $engine = new TEEngine($pdo);
         $summary = $engine->calculateBatch($_POST["batch_id"]);
-        if (empty($summary["errors"])) {
-            $message = "Calculation complete! <strong>{$summary['calculated']} companies</strong> processed. Total TE = <strong>" . number_format($summary["total_te"], 0) . " LAK</strong>";
-        } else {
-            $message = "Calculated with " . count($summary["errors"]) . " errors: " . implode("; ", array_slice($summary["errors"], 0, 3));
-            $msg_type = "warning";
+        $return_to = $_POST["return_to"] ?? "";
+        $qs = http_build_query([
+            "batch"     => $_POST["batch_id"],
+            "calc"      => "1",
+            "count"     => $summary["calculated"] ?? 0,
+            "total_te"  => $summary["total_te"] ?? 0,
+            "errors"    => !empty($summary["errors"]) ? count($summary["errors"]) : 0,
+        ]);
+        // If called from import_cit.php / view_companies.php — redirect back with success
+        if ($return_to === "import_cit") {
+            header("Location: import_cit.php?calc_done=1&" . $qs);
+            exit;
         }
+        // Otherwise — redirect to batch detail view (recalculation flow)
+        header("Location: calculator.php?" . $qs);
+        exit;
     } catch (Exception $e) {
         $message = "Engine error: " . $e->getMessage();
         $msg_type = "danger";
+    }
+}
+
+// Show success banner on redirect back to detail view
+if (isset($_GET["calc"]) && $_GET["calc"] === "1" && $batch) {
+    $count = (int)($_GET["count"] ?? 0);
+    $total = (float)($_GET["total_te"] ?? 0);
+    $err = (int)($_GET["errors"] ?? 0);
+    if ($err > 0) {
+        $message = "Recalculation: <strong>{$count}</strong> companies, <strong>" . number_format($total, 0) . " LAK</strong> total TE. <span class='text-warning'>{$err} issue(s)</span> — check data.";
+        $msg_type = "warning";
+    } elseif ($count > 0) {
+        $message = "Recalculation: <strong>{$count}</strong> companies processed. Total TE = <strong>" . number_format($total, 0) . " LAK</strong>";
     }
 }
 
@@ -37,13 +60,17 @@ if (!$batch):
     $total_paid = array_sum(array_column($all_rows, 'pt_paid'));
     $total_te = array_sum(array_column($all_rows, 'profit_tax_te'));
 
-    $batches = $pdo->query("SELECT c.import_batch_id, c.tax_year, COUNT(*) as `rows`,
+    $batches = $pdo->query("SELECT c.import_batch_id, 
+                            COUNT(*) as total_rows,
+                            MIN(c.tax_year) as min_year,
+                            MAX(c.tax_year) as max_year,
+                            GROUP_CONCAT(DISTINCT c.tax_year ORDER BY c.tax_year SEPARATOR ',') as year_list,
                             COALESCE(SUM(r.benchmark_pt), 0) as total_bm,
                             SUM(c.pt_paid) as total_paid,
                             COALESCE(SUM(r.profit_tax_te), 0) as total_te
                             FROM companies c
                             LEFT JOIN te_profit_result r ON c.id = r.company_id
-                            GROUP BY c.import_batch_id, c.tax_year
+                            GROUP BY c.import_batch_id
                             ORDER BY MAX(c.id) DESC")->fetchAll();
 
 require_once __DIR__ . "/../includes/header.php";
@@ -101,11 +128,21 @@ require_once __DIR__ . "/../includes/header.php";
         <table class="table table-hover mb-0">
             <thead class="table-light"><tr><th>Batch</th><th>Year</th><th>Records</th><th class="text-end">BM PT</th><th class="text-end">PT Paid</th><th class="text-end">TE Total</th><th>Actions</th></tr></thead>
             <tbody>
-                <?php foreach ($batches as $b): ?>
+                <?php foreach ($batches as $b): 
+                    $b_years = explode(',', $b["year_list"]);
+                ?>
                 <tr>
                     <td><small class="font-monospace"><?= htmlspecialchars($b["import_batch_id"]) ?></small></td>
-                    <td><?= $b["tax_year"] ?></td>
-                    <td><span class="badge bg-primary rounded-pill px-3"><?= number_format($b["rows"]) ?></span></td>
+                    <td>
+                        <?php if ($b["min_year"] == $b["max_year"]): ?>
+                            <?= $b["min_year"] ?>
+                        <?php else: ?>
+                            <?php foreach ($b_years as $y): ?>
+                            <span class="badge bg-secondary me-1" style="font-size:0.7rem"><?= $y ?></span>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </td>
+                    <td><span class="badge bg-primary rounded-pill px-3"><?= number_format($b["total_rows"]) ?></span></td>
                     <td class="text-end fw-bold text-info"><?= number_format($b["total_bm"]) ?></td>
                     <td class="text-end fw-bold text-success"><?= number_format($b["total_paid"]) ?></td>
                     <td class="text-end fw-bold text-danger"><?= number_format($b["total_te"]) ?></td>
@@ -128,7 +165,7 @@ require_once __DIR__ . "/../includes/header.php";
 <?php
 // --- Batch Detail Mode ---
 else:
-    $stmt = $pdo->prepare("SELECT c.*, r.benchmark_rate_applied, r.benchmark_pt, r.pt_te, r.matched_provisions, r.profit_tax_te 
+    $stmt = $pdo->prepare("SELECT c.*, r.benchmark_rate_applied, r.benchmark_pt, r.pt_te, r.matched_provisions, r.profit_tax_te, r.expert_te 
                            FROM companies c 
                            LEFT JOIN te_profit_result r ON c.id = r.company_id 
                            WHERE c.import_batch_id = ?
@@ -148,6 +185,7 @@ else:
     $year_list = $years->fetchAll(PDO::FETCH_COLUMN);
 
 require_once __DIR__ . "/../includes/header.php";
+$is_admin = ($_SESSION["user_email"] ?? '') === "admin@example.com";
 ?>
 
 <div class="row mb-3">
@@ -156,7 +194,7 @@ require_once __DIR__ . "/../includes/header.php";
         <p class="text-muted">Batch: <code><?= htmlspecialchars($batch) ?></code> — <strong><?= $total_records ?></strong> records</p>
     </div>
     <div class="col-md-4 text-end">
-        <form method="POST" class="d-inline">
+        <form method="POST" class="d-inline" id="calcForm">
             <input type="hidden" name="action" value="calculate">
             <input type="hidden" name="batch_id" value="<?= htmlspecialchars($batch) ?>">
             <button class="btn btn-success" id="runBtn"><i class="fas fa-calculator me-2"></i> Run TE Calculation</button>
@@ -255,12 +293,18 @@ require_once __DIR__ . "/../includes/header.php";
                     <th class="text-end table-info">BM PT</th>
                     <th class="text-end">PT Paid</th>
                     <th class="text-end table-danger">PT TE</th>
+                    <?php if ($is_admin): ?>
+                    <th class="text-end table-warning">Expert TE</th>
+                    <th class="text-center" style="width:40px">Δ</th>
+                    <?php endif; ?>
                     <th>Provisions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($rows as $i => $r): ?>
-                <tr>
+                <?php foreach ($rows as $i => $r): 
+                    $has_diff = $is_admin && $r["expert_te"] !== null && abs((float)$r["profit_tax_te"] - (float)$r["expert_te"]) > 0.01;
+                ?>
+                <tr class="<?= $has_diff ? 'table-warning' : '' ?>">
                     <td><?= $i + 1 ?></td>
                     <td><?= $r["tax_year"] ?></td>
                     <td class="font-monospace fw-bold"><?= htmlspecialchars($r["tin"]) ?></td>
@@ -275,6 +319,23 @@ require_once __DIR__ . "/../includes/header.php";
                     <td class="text-end fw-bold text-info"><?= number_format($r["benchmark_pt"], 0) ?></td>
                     <td class="text-end"><?= number_format($r["pt_paid"], 0) ?></td>
                     <td class="text-end fw-bold text-danger"><?= number_format($r["profit_tax_te"], 0) ?></td>
+                    <?php if ($is_admin): ?>
+                    <td class="text-end fw-bold text-warning"><?= $r["expert_te"] !== null ? number_format($r["expert_te"], 0) : '<span class="text-muted">—</span>' ?></td>
+                    <td class="text-center">
+                        <?php if ($r["expert_te"] !== null): ?>
+                            <?php $diff = (float)$r["profit_tax_te"] - (float)$r["expert_te"]; ?>
+                            <?php if (abs($diff) > 0.01): ?>
+                                <span class="badge bg-<?= abs($diff) > 1000000 ? 'danger' : 'warning' ?> text-dark" title="System TE - Expert TE">
+                                    <?= $diff > 0 ? '+' : '' ?><?= number_format($diff, 0) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-success" title="Matches Expert TE">✓</span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="text-muted">—</span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
                     <td>
                         <?php if ($r["matched_provisions"]): ?>
                             <?php foreach (explode(",", $r["matched_provisions"]) as $pn): ?>
@@ -287,7 +348,7 @@ require_once __DIR__ . "/../includes/header.php";
                 </tr>
                 <?php endforeach; ?>
                 <?php if (empty($rows)): ?>
-                <tr><td colspan="15" class="text-center p-4 text-muted">No records found for this batch.</td></tr>
+                <tr><td colspan="<?= $is_admin ? 17 : 15 ?>" class="text-center p-4 text-muted">No records found for this batch.</td></tr>
                 <?php endif; ?>
             </tbody>
             <tfoot>
@@ -296,6 +357,20 @@ require_once __DIR__ . "/../includes/header.php";
                     <td class="text-end text-info"><?= number_format($total_bm, 0) ?></td>
                     <td class="text-end text-success"><?= number_format($total_paid, 0) ?></td>
                     <td class="text-end text-danger"><?= number_format($total_te, 0) ?></td>
+                    <?php if ($is_admin): ?>
+                    <?php $total_expert = array_sum(array_filter(array_column($rows, 'expert_te'), fn($v) => $v !== null)); ?>
+                    <td class="text-end fw-bold text-warning"><?= number_format($total_expert, 0) ?></td>
+                    <td class="text-center">
+                        <?php $total_diff = $total_te - $total_expert; ?>
+                        <?php if (abs($total_diff) > 0.01): ?>
+                            <span class="badge bg-<?= abs($total_diff) > 1000000 ? 'danger' : 'warning' ?> text-dark">
+                                <?= $total_diff > 0 ? '+' : '' ?><?= number_format($total_diff, 0) ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="text-success">✓</span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
                     <td></td>
                 </tr>
             </tfoot>
@@ -336,9 +411,12 @@ function resetFilters() {
     $('#teTable').DataTable().search('').columns().search('').draw();
 }
 
-document.getElementById('runBtn')?.addEventListener('click', function() {
-    this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
-    this.disabled = true;
+document.getElementById('calcForm')?.addEventListener('submit', function() {
+    const btn = document.getElementById('runBtn');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
+        btn.disabled = true;
+    }
 });
 </script>
 <style>

@@ -49,9 +49,20 @@ class TERoyaltyEngine {
         $sale_value = (float)$row['electricity_sale_value'];
         $year = (int)$row['tax_year'];
 
-        // Benchmark rate is typically fixed for electricity royalty (e.g., 10%)
-        // We should ideally fetch this from a benchmark table if available.
-        $benchmark_rate = 10.0; 
+        $stmt = $this->pdo->prepare("
+            SELECT rate_percentage
+            FROM bm_royalty_fees
+            WHERE active = 1 AND start_year <= ? AND end_year >= ?
+            ORDER BY start_year DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$year, $year]);
+        $benchmark_rate = $stmt->fetchColumn();
+
+        if ($benchmark_rate === false) {
+            throw new Exception("No royalty fee benchmark configured for year {$year}");
+        }
+        $benchmark_rate = (float)$benchmark_rate;
 
         $benchmark_fee = $sale_value * ($benchmark_rate / 100);
         $te_amount = max(0, $benchmark_fee - $fee_collected);

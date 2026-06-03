@@ -29,14 +29,15 @@ class TEEngine {
         foreach ($companies->fetchAll() as $company) {
             try {
                 $result = $this->calculateCompany($company);
-                $stmt = $this->pdo->prepare("INSERT INTO te_profit_result (company_id, benchmark_rate_applied, benchmark_pt, pt_te, matched_provisions, profit_tax_te) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt = $this->pdo->prepare("INSERT INTO te_profit_result (company_id, benchmark_rate_applied, benchmark_pt, pt_te, matched_provisions, profit_tax_te, expert_te) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $stmt->execute([
                     $company["id"],
                     $result["benchmark_rate"],
                     $result["benchmark_pt"],
                     $result["pt_te"],
                     $result["matched_provisions"],
-                    $result["profit_tax_te"]
+                    $result["profit_tax_te"],
+                    $company["expert_te"] ?? null
                 ]);
                 $total_te += $result["profit_tax_te"];
                 $total_calculated++;

@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $tax_year = (int)$_POST["tax_year"];
         $spreadsheet = IOFactory::load($file["tmp_name"]);
         $sheet = $spreadsheet->getActiveSheet();
-        $batch_id = "BATCH_LAND_" . date("YmdHis");
+        $batch_id = "LAND_BATCH_" . date("YmdHis");
         
         $imported = 0; $skipped = 0;
         $unmapped_prov = 0; $unmapped_dist = 0;
@@ -38,8 +38,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         }
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+            $hasData = false;
+            foreach (range('A', 'M') as $col) {
+                $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
+                if ($cellValue !== '') {
+                    $hasData = true;
+                    break;
+                }
+            }
+            if (!$hasData) {
+                continue;
+            }
+
             $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? '');
-            if (empty($tin)) { $skipped++; continue; }
+            if (empty($tin)) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing TIN";
+                continue;
+            }
 
             $raw_prov = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
             $raw_dist = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? '');
@@ -88,7 +104,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
                 if (!$v) return null;
                 if (is_numeric($v)) return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($v)->format("Y-m-d");
-                return date("Y-m-d", strtotime($v));
+                $ts = strtotime((string)$v);
+                return $ts === false ? null : date("Y-m-d", $ts);
             };
 
             $data = [
@@ -116,10 +133,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $imported++;
         }
 
-        $message = "<strong>Success!</strong> Imported $imported rows.<br><br>";
-        $message .= "<strong>Validation Report:</strong><br>";
-        $message .= ($unmapped_prov == 0 ? "✅ Provinces Mapped.<br>" : "⚠️ $unmapped_prov Unknown Provinces.<br>");
-        $message .= ($unmapped_dist == 0 ? "✅ Districts Mapped." : "⚠️ $unmapped_dist Unknown Districts.");
+        if ($imported > 0) {
+            $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
+            $message .= "Skipped $skipped rows.<br>";
+            $message .= "Province mapping: " . ($unmapped_prov == 0 ? "all mapped" : "$unmapped_prov unknown") . ".<br>";
+            $message .= "District mapping: " . ($unmapped_dist == 0 ? "all mapped" : "$unmapped_dist unknown") . ".<br>";
+            $message .= "<a href='repo_land_concession.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
+            $message .= "<a href='calculate_land_concession.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
+        } else {
+            $message = "<strong>No Land Concession records imported.</strong><br>The uploaded workbook appears to contain only headers or no complete data rows.";
+            $msg_type = "warning";
+        }
         
         if (!empty($error_log)) {
             $log_content = "LAND CONCESSION IMPORT DIAGNOSTIC - " . date("Y-m-d H:i:s") . "\r\n";
@@ -131,7 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             if (!is_dir(__DIR__ . "/../data/logs")) mkdir(__DIR__ . "/../data/logs", 0777, true);
             file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
 
-            $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Detailed Error Log</a>";
+            $message .= "<br><a href='download_log.php?log_id=" . urlencode($batch_id) . "' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Detailed Error Log</a>";
         }
 
     } catch (Exception $e) {
@@ -172,6 +196,9 @@ require_once __DIR__ . "/../includes/header.php";
           <div class="mb-3">
             <label class="form-label fw-bold">Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
+            <div class="form-text mt-2 small">
+                <a href="generate_land_concession_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Template</a>
+            </div>
           </div>
           <div class="d-grid"><button type="submit" class="btn btn-primary btn-lg" id="importBtn">Import</button></div>
         </form>

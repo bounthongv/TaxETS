@@ -33,9 +33,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $imported = 0; $skipped = 0;
         $error_log = [];
 
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+        $max_row = $sheet->getHighestRow();
+        $empty_streak = 0;
+        for ($row = 2; $row <= $max_row; $row++) {
             $ptin = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? "");
-            if (empty($ptin)) { $skipped++; continue; }
+
+            $is_empty_row = true;
+            foreach (range("A", "AC") as $col) {
+                $cell_value = $sheet->getCell($col . $row)->getCalculatedValue();
+                if (trim((string)($cell_value ?? "")) !== "") {
+                    $is_empty_row = false;
+                    break;
+                }
+            }
+
+            if ($is_empty_row) {
+                $empty_streak++;
+                if ($empty_streak >= 20) break; // Stop after trailing empty rows.
+                continue;
+            }
+
+            if (empty($ptin)) {
+                $empty_streak = 0;
+                $skipped++;
+                $error_log[] = "Row $row: PTIN is required";
+                continue;
+            }
+            $empty_streak = 0;
 
             $num = function($col) use ($sheet, $row) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
@@ -102,7 +126,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         }
 
         $message = "<strong>Import Success!</strong> Imported $imported records.<br><br>";
-        $message .= "Skipped $skipped rows (missing PTIN).<br>";
+        if ($skipped > 0) {
+            $message .= "Warning: Skipped $skipped row(s) with data but no PTIN.<br>";
+        }
+        $message .= "Processed up to row " . ($row - 1) . " of $max_row total rows in sheet.<br>";
 
         if (!empty($error_log)) {
             $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
