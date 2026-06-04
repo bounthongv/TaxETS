@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 
 $pdo = getDbConnection();
 $errors = [];
+$report_filters = reportFilterInput();
 
 // Fetch all available years
 $all_years = [];
@@ -46,6 +48,7 @@ $regimeYearTotals = []; // [regime_4digit][year] => te
 $grandYearTotals = [];
 
 try {
+    $params = [$from_year, $to_year];
     $sql = "SELECT
                 SUBSTRING_INDEX(i.regime_code, '-', 1) AS regime_4digit,
                 SUBSTRING_INDEX(i.regime_code, '-', -1) AS regime_3digit,
@@ -55,11 +58,12 @@ try {
             JOIN te_asycuda_result te ON i.id = te.asycuda_id
             WHERE te.vat_te <> 0 AND i.doc_date IS NOT NULL
               AND YEAR(i.doc_date) BETWEEN ? AND ?
+              " . reportImportDateCondition(reportBatchDateExpression("i", "import_batch_id", "import_date"), $report_filters, $params) . "
             GROUP BY regime_4digit, regime_3digit, tax_year
             ORDER BY regime_4digit, regime_3digit, tax_year";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($params);
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $r4 = $row['regime_4digit'];
@@ -187,7 +191,7 @@ foreach ($matrix as $sub) { $totalSubRegimes += count($sub); }
     <div class="col-md-8"><h2 class="fw-bold text-dark"><i class="fas fa-truck-loading me-2 text-primary"></i> Import VAT TE by Regime Code</h2><p class="text-muted">Tax Expenditure from Import VAT, grouped by Regime Code (4-digit) and Sub-Regime / Payment Condition (3-digit).</p></div>
     <div class="col-md-4 text-end">
         <button id="expandAllBtn" class="btn btn-outline-primary shadow-sm me-2"><i class="fas fa-expand me-2"></i> Expand All</button>
-        <a href="?export=1&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
+        <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
         <button id="exportPdfBtn" class="btn btn-danger shadow-sm ms-2"><i class="fas fa-file-pdf me-2"></i> Export PDF</button>
     </div>
 </div>
@@ -197,6 +201,7 @@ foreach ($matrix as $sub) { $totalSubRegimes += count($sub); }
 <form method="GET" class="row align-items-end g-3">
     <div class="col-md-2"><label class="form-label small fw-bold text-muted text-uppercase">From Year</label><select name="from_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $from_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
     <div class="col-md-2"><label class="form-label small fw-bold text-muted text-uppercase">To Year</label><select name="to_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $to_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
+    <?= reportImportDateFilterControl("report_import_vat.php", $from_year, $to_year) ?>
     <div class="col-md-2"><button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button></div>
     <div class="col-md-2"><a href="report_import_vat.php" class="btn btn-outline-secondary w-100 border-0">Reset</a></div>
 </form></div></div>

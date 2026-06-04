@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 
 $is_export = isset($_GET['export']);
 
@@ -9,6 +10,7 @@ if (!$is_export) {
 }
 
 $pdo = getDbConnection();
+$report_filters = reportFilterInput();
 
 // Initialize data containers
 $profit_data = [];
@@ -26,62 +28,19 @@ $land_concession_data = [];
 $annual_years = [];
 
 try {
-    // 1. Profit Tax (CIT)
-    $stmt = $pdo->query("SELECT c.tax_year, SUM(r.profit_tax_te) as total_te FROM companies c JOIN te_profit_result r ON r.company_id = c.id WHERE c.tax_year > 0 GROUP BY c.tax_year");
-    $profit_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 2. Individual Tax (PIT)
-    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM te_individual_result WHERE tax_year > 0 GROUP BY tax_year");
-    $pit_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 3. Salary Tax
-    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_salary_tax_data WHERE tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
-    $salary_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 4. Domestic Value Added Tax (VAT)
-    $stmt = $pdo->query("SELECT YEAR(filing_period) as yr, SUM(expert_te) as total_te FROM import_vat_data WHERE filing_period IS NOT NULL AND filing_period != '0000-00-00' GROUP BY yr HAVING yr > 0");
-    $vat_domestic_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 5. Customs Duty (ASYCUDA)
-    $stmt = $pdo->query("SELECT YEAR(COALESCE(NULLIF(ai.receipt_date, '0000-00-00'), NULLIF(ai.assess_date, '0000-00-00'), ai.doc_date)) as yr, SUM(r.customs_te) as total_te 
-                         FROM te_asycuda_result r 
-                         JOIN asycuda_imports ai ON r.asycuda_id = ai.id 
-                         GROUP BY yr HAVING yr > 0");
-    $customs_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 6. Excise Tax (ASYCUDA)
-    $stmt = $pdo->query("SELECT YEAR(COALESCE(NULLIF(ai.receipt_date, '0000-00-00'), NULLIF(ai.assess_date, '0000-00-00'), ai.doc_date)) as yr, SUM(r.excise_te) as total_te 
-                         FROM te_asycuda_result r 
-                         JOIN asycuda_imports ai ON r.asycuda_id = ai.id 
-                         GROUP BY yr HAVING yr > 0");
-    $excise_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 7. Import VAT (ASYCUDA)
-    $stmt = $pdo->query("SELECT YEAR(COALESCE(NULLIF(ai.receipt_date, '0000-00-00'), NULLIF(ai.assess_date, '0000-00-00'), ai.doc_date)) as yr, SUM(r.vat_te) as total_te 
-                         FROM te_asycuda_result r 
-                         JOIN asycuda_imports ai ON r.asycuda_id = ai.id 
-                         GROUP BY yr HAVING yr > 0");
-    $vat_import_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 8. SEZ Developer
-    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_sez_data WHERE type = 'Developer' AND tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
-    $sez_dev_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 9. SEZ Investor
-    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_sez_data WHERE type = 'Investor' AND tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
-    $sez_inv_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 10. Resource Fee (Non-Tax)
-    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_resource_data WHERE tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
-    $resource_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 11. Royalty Fee (Non-Tax)
-    $stmt = $pdo->query("SELECT tax_year, SUM(te_amount) as total_te FROM import_royalty_data WHERE tax_year > 0 AND te_amount > 0 GROUP BY tax_year");
-    $royalty_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // 12. Land Concession (Non-Tax)
-    $stmt = $pdo->query("SELECT c.tax_year, SUM(r.te_land_concession) as total_te FROM companies c JOIN te_land_concession_result r ON r.company_id = c.id WHERE c.tax_year > 0 GROUP BY c.tax_year");
-    $land_concession_data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $reportData = reportTaxTypeData($pdo, $report_filters);
+    $profit_data = $reportData["profit"];
+    $pit_data = $reportData["pit"];
+    $salary_data = $reportData["salary"];
+    $vat_domestic_data = $reportData["vat_domestic"];
+    $customs_data = $reportData["customs"];
+    $excise_data = $reportData["excise"];
+    $vat_import_data = $reportData["vat_import"];
+    $sez_dev_data = $reportData["sez_dev"];
+    $sez_inv_data = $reportData["sez_inv"];
+    $resource_data = $reportData["resource"];
+    $royalty_data = $reportData["royalty"];
+    $land_concession_data = $reportData["land"];
 
     // Collect all unique years and filter out null/0/invalid
     $raw_years = array_unique(array_merge(
@@ -104,11 +63,36 @@ try {
     });
     sort($annual_years);
 
+    $all_years = $annual_years;
+    $from_year = isset($_GET['from_year']) ? (int)$_GET['from_year'] : 0;
+    $to_year = isset($_GET['to_year']) ? (int)$_GET['to_year'] : 0;
+    if (!$from_year || !$to_year) {
+        if (!empty($all_years)) {
+            $from_year = (int)min($all_years);
+            $to_year = (int)max($all_years);
+        } else {
+            $from_year = (int)date("Y");
+            $to_year = (int)date("Y");
+        }
+    }
+    if ($from_year > $to_year) {
+        [$from_year, $to_year] = [$to_year, $from_year];
+    }
+    $annual_years = array_values(array_filter($annual_years, function($y) use ($from_year, $to_year) {
+        return (int)$y >= $from_year && (int)$y <= $to_year;
+    }));
+
 } catch (Exception $e) {
     echo '<div class="alert alert-danger">Error aggregating data: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 
-if (empty($annual_years)) { $annual_years = [date("Y")]; }
+if (!isset($all_years)) { $all_years = []; }
+if (!isset($from_year) || !isset($to_year)) {
+    $from_year = (int)date("Y");
+    $to_year = (int)date("Y");
+}
+if (empty($annual_years)) { $annual_years = range($from_year, $to_year); }
+if (empty($all_years)) { $all_years = $annual_years; }
 
 $tax_types = [
     'Corporate Income Tax (Profit Tax)' => $profit_data,
@@ -195,10 +179,40 @@ if ($is_export) {
       <p class="text-muted">Consolidated summary of tax expenditures across all tax regimes and years.</p>
     </div>
     <div class="d-flex gap-2">
-      <a href="?export=1" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
+      <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
       <button type="button" class="btn btn-danger" id="exportPdfBtn"><i class="fas fa-file-pdf me-1"></i> Export PDF</button>
       <a href="recalculate_all.php" class="btn btn-primary"><i class="fas fa-sync-alt me-1"></i> Update Data</a>
     </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+  <div class="card-body">
+    <form method="GET" class="row align-items-end g-3">
+      <div class="col-md-2">
+        <label class="form-label small fw-bold text-muted text-uppercase">From Year</label>
+        <select name="from_year" class="form-select border-0 bg-light">
+          <?php foreach ($all_years as $yearOption): ?>
+            <option value="<?= htmlspecialchars($yearOption) ?>" <?= (int)$yearOption === (int)$from_year ? 'selected' : '' ?>><?= htmlspecialchars($yearOption) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold text-muted text-uppercase">To Year</label>
+        <select name="to_year" class="form-select border-0 bg-light">
+          <?php foreach ($all_years as $yearOption): ?>
+            <option value="<?= htmlspecialchars($yearOption) ?>" <?= (int)$yearOption === (int)$to_year ? 'selected' : '' ?>><?= htmlspecialchars($yearOption) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <?= reportImportDateFilterControl("report_tax_type.php") ?>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100 shadow-sm"><i class="fas fa-filter me-2"></i> Filter</button>
+      </div>
+      <div class="col-md-2">
+        <a href="report_tax_type.php" class="btn btn-light w-100 shadow-sm border-0">Reset</a>
+      </div>
+    </form>
   </div>
 </div>
 

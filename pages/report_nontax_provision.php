@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 
 $pdo = getDbConnection();
 $errors = [];
+$report_filters = reportFilterInput();
 $type = isset($_GET['type']) ? $_GET['type'] : 'land_concession';
 
 $typeConfig = [
@@ -62,8 +64,9 @@ try {
         $provisions = $pdo->query("SELECT provision_code, provision_name, category, exemption_years FROM land_concession_provisions WHERE active = 1 ORDER BY provision_code")->fetchAll();
         foreach ($provisions as $p) { $provLabels[$p['provision_code']] = $p['provision_code'] . ' - ' . $p['provision_name']; $provDescs[$p['provision_code']] = $p['provision_name']; }
 
-        $stmt = $pdo->prepare("SELECT c.tax_year, SUM(r.te_land_concession) as te FROM te_land_concession_result r JOIN companies c ON r.company_id = c.id WHERE c.tax_year BETWEEN ? AND ? AND r.te_land_concession > 0 GROUP BY c.tax_year");
-        $stmt->execute([$from_year, $to_year]);
+        $params = [$from_year, $to_year];
+        $stmt = $pdo->prepare("SELECT c.tax_year, SUM(r.te_land_concession) as te FROM te_land_concession_result r JOIN companies c ON r.company_id = c.id WHERE c.tax_year BETWEEN ? AND ? AND r.te_land_concession > 0" . reportImportDateCondition(reportBatchDateExpression("c", "import_batch_id"), $report_filters, $params) . " GROUP BY c.tax_year");
+        $stmt->execute($params);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $matrix['Land Concession'][(int)$row['tax_year']] = (float)$row['te'];
         }
@@ -72,8 +75,9 @@ try {
         $provisions = $pdo->query("SELECT provision_code, provision_name FROM natural_resource_provisions WHERE category = 'Resource Fee' AND active = 1 ORDER BY provision_code")->fetchAll();
         foreach ($provisions as $p) { $provLabels[$p['provision_code']] = $p['provision_code'] . ' - ' . $p['provision_name']; $provDescs[$p['provision_code']] = $p['provision_name']; }
 
-        $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_resource_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 GROUP BY tax_year");
-        $stmt->execute([$from_year, $to_year]);
+        $params = [$from_year, $to_year];
+        $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_resource_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0" . reportImportDateCondition(reportBatchDateExpression("import_resource_data", "batch_id", "import_date"), $report_filters, $params) . " GROUP BY tax_year");
+        $stmt->execute($params);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $matrix['Resource Fee'][(int)$row['tax_year']] = (float)$row['te'];
         }
@@ -82,8 +86,9 @@ try {
         $provisions = $pdo->query("SELECT provision_code, provision_name FROM natural_resource_provisions WHERE category = 'Royalty Fee' AND active = 1 ORDER BY provision_code")->fetchAll();
         foreach ($provisions as $p) { $provLabels[$p['provision_code']] = $p['provision_code'] . ' - ' . $p['provision_name']; $provDescs[$p['provision_code']] = $p['provision_name']; }
 
-        $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_royalty_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 GROUP BY tax_year");
-        $stmt->execute([$from_year, $to_year]);
+        $params = [$from_year, $to_year];
+        $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_royalty_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0" . reportImportDateCondition(reportBatchDateExpression("import_royalty_data", "batch_id", "import_date"), $report_filters, $params) . " GROUP BY tax_year");
+        $stmt->execute($params);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $matrix['Royalty Fee'][(int)$row['tax_year']] = (float)$row['te'];
         }
@@ -137,7 +142,7 @@ require_once __DIR__ . "/../includes/header.php";
 ?>
 <div class="row mb-4">
     <div class="col-md-8"><h2 class="fw-bold text-dark"><i class="fas <?= $cfg['icon'] ?> me-2 text-primary"></i> <?= $cfg['title'] ?></h2><p class="text-muted"><?= $cfg['desc'] ?></p></div>
-    <div class="col-md-4 text-end"><a href="?export=1&type=<?= $type ?>&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a><button id="exportPdfBtn" class="btn btn-danger shadow-sm ms-2"><i class="fas fa-file-pdf me-2"></i> Export PDF</button></div>
+    <div class="col-md-4 text-end"><a href="?<?= reportAppendFilters(["export" => 1, "type" => $type, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a><button id="exportPdfBtn" class="btn btn-danger shadow-sm ms-2"><i class="fas fa-file-pdf me-2"></i> Export PDF</button></div>
 </div>
 <?php if (!empty($errors)): ?><div class="alert alert-danger"><?= htmlspecialchars(implode('; ', $errors)) ?></div><?php endif; ?>
 
@@ -150,6 +155,7 @@ require_once __DIR__ . "/../includes/header.php";
     </select></div>
     <div class="col-md-2"><label class="form-label small fw-bold text-muted text-uppercase">From Year</label><select name="from_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $from_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
     <div class="col-md-2"><label class="form-label small fw-bold text-muted text-uppercase">To Year</label><select name="to_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $to_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
+    <?= reportImportDateFilterControl("report_nontax_provision.php", $from_year, $to_year) ?>
     <div class="col-md-2"><button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button></div>
     <div class="col-md-2"><a href="report_nontax_provision.php" class="btn btn-outline-secondary w-100 border-0">Reset</a></div>
 </form></div></div>

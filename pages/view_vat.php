@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/batch_nav.php";
 
 $pdo = getDbConnection();
 
@@ -37,7 +38,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
             $stmt->execute($values);
             $message = "Record updated successfully.";
         } elseif ($action === "add_record") {
-            $new_batch = $batch ?: "MANUAL_ENTRY_VAT_" . date("Y");
+            $manualYear = $data["tax_year"] ?? date("Y");
+            $new_batch = $batch ?: "MANUAL_ENTRY_VAT_" . $manualYear . "_" . date("YmdHis");
             $data["batch_id"] = $new_batch;
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
@@ -87,6 +89,7 @@ require_once __DIR__ . "/../includes/header.php";
       <p class="text-muted">Batch: <code><?= htmlspecialchars($batch ?: 'Manual Entry') ?></code> — <strong><?= count($records) ?></strong> records</p>
     </div>
     <div class="btn-group shadow-sm">
+      <?= batchHubBackButton() ?>
       <button class="btn btn-primary" onclick="addRecord()"><i class="fas fa-plus me-2"></i> Add Record to Batch</button>
       <a href="te_vat.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Run TE Calculation</a>
     </div>

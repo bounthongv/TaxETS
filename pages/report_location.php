@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 require_once __DIR__ . "/../includes/header.php";
 
 $pdo = getDbConnection();
+$report_filters = reportFilterInput();
 $errors = [];
 
 // --- Province -> hc-key mapping for Laos Highmaps ---
@@ -100,10 +102,11 @@ $other_total = [];
 
 try {
     // A. CIT (Profit Tax) by Province
+    $citParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT c.province, c.tax_year, SUM(r.profit_tax_te) as te
                            FROM companies c JOIN te_profit_result r ON c.id = r.company_id
-                           WHERE c.tax_year BETWEEN ? AND ? GROUP BY c.province, c.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+                           WHERE c.tax_year BETWEEN ? AND ?" . reportImportDateCondition(reportBatchDateExpression("c", "import_batch_id"), $report_filters, $citParams) . " GROUP BY c.province, c.tax_year");
+    $stmt->execute($citParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['province']);
         $yr = (int)$row['tax_year'];
@@ -112,10 +115,11 @@ try {
     }
 
     // B. PIT by Province (via TIN)
+    $pitParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT COALESCE(c.province, '') as loc, r.tax_year, SUM(r.te_amount) as te
-                           FROM te_individual_result r LEFT JOIN companies c ON r.tin = c.tin COLLATE utf8mb4_general_ci
-                           WHERE r.tax_year BETWEEN ? AND ? GROUP BY loc, r.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+                           FROM te_individual_result r LEFT JOIN companies c ON r.tin COLLATE utf8mb4_unicode_ci = c.tin COLLATE utf8mb4_unicode_ci
+                           WHERE r.tax_year BETWEEN ? AND ?" . reportImportDateCondition("(SELECT MAX(ipd.import_date) FROM import_pit_data ipd WHERE ipd.ptin COLLATE utf8mb4_unicode_ci = r.tin COLLATE utf8mb4_unicode_ci AND ipd.tax_year = r.tax_year)", $report_filters, $pitParams) . " GROUP BY loc, r.tax_year");
+    $stmt->execute($pitParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['loc']);
         $yr = (int)$row['tax_year'];
@@ -124,10 +128,11 @@ try {
     }
 
     // C. Salary Tax by Province (via TIN)
+    $salaryParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT COALESCE(c.province, '') as loc, s.tax_year, SUM(s.te_amount) as te
-                           FROM import_salary_tax_data s LEFT JOIN companies c ON s.tin = c.tin COLLATE utf8mb4_unicode_ci
-                           WHERE s.tax_year BETWEEN ? AND ? AND s.te_amount > 0 GROUP BY loc, s.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+                           FROM import_salary_tax_data s LEFT JOIN companies c ON s.tin COLLATE utf8mb4_unicode_ci = c.tin COLLATE utf8mb4_unicode_ci
+                           WHERE s.tax_year BETWEEN ? AND ? AND s.te_amount > 0" . reportImportDateCondition(reportBatchDateExpression("s", "batch_id", "import_date"), $report_filters, $salaryParams) . " GROUP BY loc, s.tax_year");
+    $stmt->execute($salaryParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['loc']);
         $yr = (int)$row['tax_year'];
@@ -136,10 +141,11 @@ try {
     }
 
     // D. SEZ Developer by Province
+    $sezDevParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT COALESCE(s.province, '') as loc, s.tax_year, SUM(s.te_amount) as te
                            FROM import_sez_data s WHERE s.type = 'Developer' AND s.tax_year BETWEEN ? AND ? AND s.te_amount > 0
-                           GROUP BY loc, s.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+                           " . reportImportDateCondition(reportBatchDateExpression("s", "batch_id", "import_date"), $report_filters, $sezDevParams) . " GROUP BY loc, s.tax_year");
+    $stmt->execute($sezDevParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['loc']);
         $yr = (int)$row['tax_year'];
@@ -148,10 +154,11 @@ try {
     }
 
     // E. SEZ Investor by Province
+    $sezInvParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT COALESCE(s.province, '') as loc, s.tax_year, SUM(s.te_amount) as te
                            FROM import_sez_data s WHERE s.type = 'Investor' AND s.tax_year BETWEEN ? AND ? AND s.te_amount > 0
-                           GROUP BY loc, s.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+                           " . reportImportDateCondition(reportBatchDateExpression("s", "batch_id", "import_date"), $report_filters, $sezInvParams) . " GROUP BY loc, s.tax_year");
+    $stmt->execute($sezInvParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['loc']);
         $yr = (int)$row['tax_year'];
@@ -160,10 +167,11 @@ try {
     }
 
     // F. Land Concession by Province
+    $landParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT COALESCE(c.province, '') as loc, c.tax_year, SUM(r.te_land_concession) as te
                            FROM te_land_concession_result r JOIN companies c ON r.company_id = c.id
-                           WHERE c.tax_year BETWEEN ? AND ? GROUP BY loc, c.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+                           WHERE c.tax_year BETWEEN ? AND ?" . reportImportDateCondition(reportBatchDateExpression("c", "import_batch_id"), $report_filters, $landParams) . " GROUP BY loc, c.tax_year");
+    $stmt->execute($landParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['loc']);
         $yr = (int)$row['tax_year'];
@@ -172,9 +180,10 @@ try {
     }
 
     // G. Domestic VAT -> Other / Unclassified (no province link)
+    $vatParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT province, YEAR(filing_period) as yr, SUM(expert_te) as te
-                           FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? GROUP BY province, yr");
-    $stmt->execute([$from_year, $to_year]);
+                           FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ?" . reportImportDateCondition(reportBatchDateExpression("import_vat_data", "batch_id", "import_date"), $report_filters, $vatParams) . " GROUP BY province, yr");
+    $stmt->execute($vatParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['province']);
         $yr = (int)$row['yr'];
@@ -183,10 +192,11 @@ try {
     }
 
     // H. ASYCUDA by Province
+    $asyParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT ai.province, YEAR(ai.doc_date) as yr, SUM(r.total_te) as te
                            FROM te_asycuda_result r JOIN asycuda_imports ai ON r.asycuda_id = ai.id
-                           WHERE YEAR(ai.doc_date) BETWEEN ? AND ? GROUP BY ai.province, yr");
-    $stmt->execute([$from_year, $to_year]);
+                           WHERE YEAR(ai.doc_date) BETWEEN ? AND ?" . reportImportDateCondition(reportBatchDateExpression("ai", "import_batch_id", "import_date"), $report_filters, $asyParams) . " GROUP BY ai.province, yr");
+    $stmt->execute($asyParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $loc = trim($row['province']);
         $yr = (int)$row['yr'];
@@ -195,17 +205,19 @@ try {
     }
 
     // I. Resource Fee -> Other
+    $resourceParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT tax_year as yr, SUM(te_amount) as te FROM import_resource_data
-                           WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 GROUP BY yr");
-    $stmt->execute([$from_year, $to_year]);
+                           WHERE tax_year BETWEEN ? AND ? AND te_amount > 0" . reportImportDateCondition(reportBatchDateExpression("import_resource_data", "batch_id", "import_date"), $report_filters, $resourceParams) . " GROUP BY yr");
+    $stmt->execute($resourceParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $other_total[$row['yr']] = ($other_total[$row['yr']] ?? 0) + (float)$row['te'];
     }
 
     // J. Royalty Fee -> Other
+    $royaltyParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT tax_year as yr, SUM(te_amount) as te FROM import_royalty_data
-                           WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 GROUP BY yr");
-    $stmt->execute([$from_year, $to_year]);
+                           WHERE tax_year BETWEEN ? AND ? AND te_amount > 0" . reportImportDateCondition(reportBatchDateExpression("import_royalty_data", "batch_id", "import_date"), $report_filters, $royaltyParams) . " GROUP BY yr");
+    $stmt->execute($royaltyParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $other_total[$row['yr']] = ($other_total[$row['yr']] ?? 0) + (float)$row['te'];
     }
@@ -330,7 +342,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
         <p class="text-muted">Geographic breakdown of Tax Expenditures across the country. Data aggregated from all Tax Modules.</p>
     </div>
     <div class="col-md-4 text-end">
-        <a href="?export=1&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
+        <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
         <button id="exportPdfBtn" class="btn btn-danger shadow-sm"><i class="fas fa-file-pdf me-2"></i> Export PDF</button>
     </div>
 </div>
@@ -359,6 +371,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?= reportImportDateFilterControl("report_location.php", $from_year, $to_year) ?>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button>
             </div>

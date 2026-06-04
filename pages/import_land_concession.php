@@ -26,8 +26,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $error_log = [];
 
         // 1. Pre-load Dictionary for Resolution
-        $prov_rows = $pdo->query("SELECT pro_id, pro_name FROM province")->fetchAll();
-        $dist_rows = $pdo->query("SELECT dis_id, pro_id, dis_name FROM district")->fetchAll();
+        $prov_rows = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces")->fetchAll();
+        $dist_rows = $pdo->query("SELECT d.district_code AS dis_id, p.province_code AS pro_id, d.district_name AS dis_name FROM districts d LEFT JOIN provinces p ON d.province_id = p.id")->fetchAll();
         
         $prov_map = []; foreach ($prov_rows as $r) { $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']]; }
         $dist_map = []; 
@@ -37,9 +37,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $dist_by_province[$r['pro_id']][] = ['dis_id' => $r['dis_id'], 'name' => strtoupper(trim($r['dis_name']))];
         }
 
+        $normalizeHeader = function($value) {
+            return strtolower(preg_replace('/[^a-z0-9]/i', '', (string)$value));
+        };
+        $headers = [];
+        for ($col = 1; $col <= \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sheet->getHighestColumn()); $col++) {
+            $header = $normalizeHeader($sheet->getCellByColumnAndRow($col, 1)->getCalculatedValue());
+            if ($header !== '') {
+                $headers[$header] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+            }
+        }
+        $colFor = function(array $names, string $fallback) use ($headers, $normalizeHeader) {
+            foreach ($names as $name) {
+                $key = $normalizeHeader($name);
+                if (isset($headers[$key])) {
+                    return $headers[$key];
+                }
+            }
+            return $fallback;
+        };
+
+        $colTin = $colFor(["TIN"], "B");
+        $colCompany = $colFor(["CompanyName", "Company Name"], "E");
+        $colDistrict = $colFor(["District"], "C");
+        $colProvince = $colFor(["Province"], "D");
+        $colYear = $colFor(["Year", "Tax Year"], "");
+        $colConfirmDate = $colFor(["Receiptdate", "Receipt Date", "Confirm Date"], "F");
+        $colArea = $colFor(["Concessionarea", "Concession Area", "Concession Area (ha)"], "G");
+        $colBenchmarkRate = $colFor(["BenchmarkRate", "Benchmark Rate", "Benchmark Rate (USD/ha)"], "H");
+        $colContractedRate = $colFor(["ContractedRate", "Contracted Rate", "Contracted Rate (USD/ha)"], "I");
+        $colFeePaid = $colFor(["ConcessionFeePaid", "FeePaid", "Concession Fee Paid", "Concession Fee Paid (USD)"], "J");
+        $colBenchmarkValue = $colFor(["Benchmark Value", "Benchmark Value (USD)"], "");
+        $colNonTaxTe = $colFor(["Non-Tax TE", "Non-Tax TE (USD)", "NonTaxTE"], "");
+        $colProvisionName = $colFor(["ProvisionName", "Provision Name"], "M");
+
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
             $hasData = false;
-            foreach (range('A', 'M') as $col) {
+            for ($colIndex = 1; $colIndex <= \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sheet->getHighestColumn()); $colIndex++) {
+                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                 $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
                 if ($cellValue !== '') {
                     $hasData = true;
@@ -50,15 +85,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 continue;
             }
 
-            $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? '');
+            $tin = trim($sheet->getCell($colTin . $row)->getCalculatedValue() ?? '');
             if (empty($tin)) {
                 $skipped++;
                 $error_log[] = "Row $row: Missing TIN";
                 continue;
             }
 
-            $raw_prov = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
-            $raw_dist = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? '');
+            $raw_prov = trim($sheet->getCell($colProvince . $row)->getCalculatedValue() ?? '');
+            $raw_dist = trim($sheet->getCell($colDistrict . $row)->getCalculatedValue() ?? '');
             
             // Resolve IDs
             $upper_prov = strtoupper($raw_prov);
@@ -101,30 +136,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             }
 
             $dateVal = function($col) use ($sheet, $row) {
+                if ($col === "") return null;
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
                 if (!$v) return null;
                 if (is_numeric($v)) return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($v)->format("Y-m-d");
                 $ts = strtotime((string)$v);
                 return $ts === false ? null : date("Y-m-d", $ts);
             };
+            $cellVal = function($col) use ($sheet, $row) {
+                if ($col === "") return null;
+                return $sheet->getCell($col . $row)->getCalculatedValue();
+            };
+            $numberVal = function($col) use ($cellVal) {
+                $value = $cellVal($col);
+                return is_numeric($value) ? (float)$value : 0.0;
+            };
+            $rowTaxYear = $colYear !== "" ? (int)$cellVal($colYear) : 0;
+            if ($rowTaxYear <= 0) {
+                $rowTaxYear = $tax_year;
+            }
 
             $data = [
                 "import_batch_id" => $batch_id,
-                "tax_year" => $tax_year,
+                "tax_year" => $rowTaxYear,
                 "tin" => $tin,
-                "company_name" => $sheet->getCell("E" . $row)->getCalculatedValue(),
+                "company_name" => $cellVal($colCompany),
                 "pro_id" => $pro_id,
                 "province" => $official_province,
                 "dis_id" => $dis_id,
-                "district" => $dis_id ? ($pdo->query("SELECT dis_name FROM district WHERE dis_id = ". $pdo->quote($dis_id))->fetchColumn() ?: $raw_dist) : $raw_dist,
-                "confirm_date" => $dateVal("F"),
-                "concession_area_ha" => (float)$sheet->getCell("G" . $row)->getCalculatedValue(),
-                "benchmark_rate_usd" => (float)$sheet->getCell("H" . $row)->getCalculatedValue(),
-                "contracted_rate_usd" => (float)$sheet->getCell("I" . $row)->getCalculatedValue(),
-                "concession_fee_paid_usd" => (float)$sheet->getCell("J" . $row)->getCalculatedValue(),
-                "benchmark_value_usd" => (float)$sheet->getCell("K" . $row)->getCalculatedValue(),
-                "non_tax_te_usd" => (float)$sheet->getCell("L" . $row)->getCalculatedValue(),
-                "provision_name" => $sheet->getCell("M" . $row)->getCalculatedValue(),
+                "district" => $dis_id ? ($pdo->query("SELECT district_name FROM districts WHERE district_code = ". $pdo->quote($dis_id))->fetchColumn() ?: $raw_dist) : $raw_dist,
+                "confirm_date" => $dateVal($colConfirmDate),
+                "concession_area_ha" => $numberVal($colArea),
+                "benchmark_rate_usd" => $numberVal($colBenchmarkRate),
+                "contracted_rate_usd" => $numberVal($colContractedRate),
+                "concession_fee_paid_usd" => $numberVal($colFeePaid),
+                "benchmark_value_usd" => $numberVal($colBenchmarkValue),
+                "non_tax_te_usd" => $numberVal($colNonTaxTe),
+                "provision_name" => $cellVal($colProvisionName),
             ];
 
             $cols = implode(", ", array_keys($data));
@@ -289,7 +337,10 @@ document.getElementById("uploadForm").addEventListener("submit", function() {
 
 function goToManualEntry() {
     const year = document.getElementById('manualTaxYear').value;
-    window.location.href = `repo_land_concession.php?batch=MANUAL_ENTRY_LAND_${year}&auto_add=1&year=${year}`;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    window.location.href = `repo_land_concession.php?batch=MANUAL_ENTRY_LAND_${year}_${stamp}&auto_add=1&year=${year}`;
 }
 </script>
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>

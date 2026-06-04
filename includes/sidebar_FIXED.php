@@ -123,7 +123,8 @@
         $is_mpi = (strpos($cur, 'mpi') !== false && strpos($cur, 'api_') === false);
         $is_taxris = (strpos($cur, 'taxris') !== false && strpos($cur, 'api_') === false);
         $is_data_req = ($is_molsw || $is_lse || $is_sezo || $is_moic || $is_mpi || $is_taxris);
-        $is_import_te = (strpos($cur, 'import_') !== false && !$is_data_req)
+        $is_import_te = $cur == 'batches.php'
+          || (strpos($cur, 'import_') !== false && !$is_data_req)
           || (strpos($cur, 'asycuda_') !== false && strpos($cur, 'te_asycuda_') === false && strpos($cur, 'api_') === false)
           || (strpos($cur, 'view_') !== false);
         $is_import_excel = ($is_data_req || $is_import_te);
@@ -183,6 +184,7 @@
             <li class="<?= $cur == 'import_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land_concession.php">Non-Tax: Land concession</a></li>
             <li class="<?= $cur == 'import_resource.php' || $cur == 'view_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
             <li class="<?= $cur == 'import_royalty.php' || $cur == 'view_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
+            <li class="<?= $cur == 'batches.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/batches.php"><i class="fas fa-layer-group me-2"></i>Batch Management</a></li>
           </ul>
         </li>
       </ul>

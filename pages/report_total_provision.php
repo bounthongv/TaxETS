@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 
 $pdo = getDbConnection();
 $errors = [];
+$report_filters = reportFilterInput();
 
 // Year selection
 $all_years = [];
@@ -61,13 +63,16 @@ try {
         $citProvLabels[$p['provision_number']] = $p['provision_number'] . ' - ' . $p['legal_reference'];
     }
 
+    $citDate = reportBatchDateExpression('c', 'import_batch_id');
+    $citParams = [$from_year, $to_year];
+    $citDateCondition = reportImportDateCondition($citDate, $report_filters, $citParams);
     $stmt = $pdo->prepare("SELECT p.provision_number, c.tax_year, SUM(tr.profit_tax_te) as te
         FROM te_profit_result tr
         JOIN companies c ON tr.company_id = c.id
         JOIN profit_provisions p ON FIND_IN_SET(p.provision_number, REPLACE(tr.matched_provisions, ', ', ','))
-        WHERE c.tax_year BETWEEN ? AND ? AND tr.profit_tax_te > 0 AND tr.matched_provisions IS NOT NULL AND tr.matched_provisions != ''
+        WHERE c.tax_year BETWEEN ? AND ? {$citDateCondition} AND tr.profit_tax_te > 0 AND tr.matched_provisions IS NOT NULL AND tr.matched_provisions != ''
         GROUP BY p.provision_number, c.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($citParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
         $year = (int)$row['tax_year'];
@@ -78,12 +83,14 @@ try {
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
     // Unclassified
+    $citUnclassifiedParams = [$from_year, $to_year];
+    $citUnclassifiedDateCondition = reportImportDateCondition($citDate, $report_filters, $citUnclassifiedParams);
     $stmt = $pdo->prepare("SELECT c.tax_year, SUM(tr.profit_tax_te) as te
         FROM te_profit_result tr
         JOIN companies c ON tr.company_id = c.id
-        WHERE c.tax_year BETWEEN ? AND ? AND tr.profit_tax_te > 0 AND (tr.matched_provisions IS NULL OR tr.matched_provisions = '')
+        WHERE c.tax_year BETWEEN ? AND ? {$citUnclassifiedDateCondition} AND tr.profit_tax_te > 0 AND (tr.matched_provisions IS NULL OR tr.matched_provisions = '')
         GROUP BY c.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($citUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -93,8 +100,10 @@ try {
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
     // Grand total check
-    $stmt = $pdo->prepare("SELECT c.tax_year, SUM(tr.profit_tax_te) as te FROM te_profit_result tr JOIN companies c ON tr.company_id = c.id WHERE c.tax_year BETWEEN ? AND ? AND tr.profit_tax_te > 0 GROUP BY c.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $citTotalParams = [$from_year, $to_year];
+    $citTotalDateCondition = reportImportDateCondition($citDate, $report_filters, $citTotalParams);
+    $stmt = $pdo->prepare("SELECT c.tax_year, SUM(tr.profit_tax_te) as te FROM te_profit_result tr JOIN companies c ON tr.company_id = c.id WHERE c.tax_year BETWEEN ? AND ? {$citTotalDateCondition} AND tr.profit_tax_te > 0 GROUP BY c.tax_year");
+    $stmt->execute($citTotalParams);
     $checkTotals = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $checkTotals[(int)$row['tax_year']] = (float)$row['te']; }
     foreach ($checkTotals as $y => $t) { if (abs($t - ($yearTotals[$y] ?? 0)) > 0.01) $yearTotals[$y] = ($yearTotals[$y] ?? 0) + ($t - ($yearTotals[$y] ?? 0)); }
@@ -109,12 +118,15 @@ try {
     while ($p = $pStmt->fetch(PDO::FETCH_ASSOC)) {
         $pitProvLabels[$p['provision_number']] = $p['provision_number'] . ' - ' . $p['legal_basis'];
     }
+    $pitDate = "(SELECT MAX(ipd.import_date) FROM import_pit_data ipd WHERE ipd.ptin COLLATE utf8mb4_unicode_ci = r.tin COLLATE utf8mb4_unicode_ci AND ipd.tax_year = r.tax_year)";
+    $pitParams = [$from_year, $to_year];
+    $pitDateCondition = reportImportDateCondition($pitDate, $report_filters, $pitParams);
     $stmt = $pdo->prepare("SELECT p.provision_number, r.tax_year, SUM(r.te_amount) as te
         FROM te_individual_result r
         JOIN individual_provisions p ON FIND_IN_SET(p.provision_number COLLATE utf8mb4_general_ci, REPLACE(r.matched_provisions, ', ', ','))
-        WHERE r.tax_year BETWEEN ? AND ? AND r.te_amount > 0 AND r.matched_provisions IS NOT NULL AND r.matched_provisions != ''
+        WHERE r.tax_year BETWEEN ? AND ? {$pitDateCondition} AND r.te_amount > 0 AND r.matched_provisions IS NOT NULL AND r.matched_provisions != ''
         GROUP BY p.provision_number, r.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($pitParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
         $year = (int)$row['tax_year'];
@@ -124,8 +136,10 @@ try {
         $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM te_individual_result WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND (matched_provisions IS NULL OR matched_provisions = '') GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $pitUnclassifiedParams = [$from_year, $to_year];
+    $pitUnclassifiedDateCondition = reportImportDateCondition($pitDate, $report_filters, $pitUnclassifiedParams);
+    $stmt = $pdo->prepare("SELECT r.tax_year, SUM(r.te_amount) as te FROM te_individual_result r WHERE r.tax_year BETWEEN ? AND ? {$pitUnclassifiedDateCondition} AND r.te_amount > 0 AND (r.matched_provisions IS NULL OR r.matched_provisions = '') GROUP BY r.tax_year");
+    $stmt->execute($pitUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -139,8 +153,11 @@ try {
 
     // ----- 3. Salary Tax -----
     $provisionData = []; $yearTotals = [];
-    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_salary_tax_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $salaryDate = reportBatchDateExpression('import_salary_tax_data', 'batch_id', 'import_date');
+    $salaryParams = [$from_year, $to_year];
+    $salaryDateCondition = reportImportDateCondition($salaryDate, $report_filters, $salaryParams);
+    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_salary_tax_data WHERE tax_year BETWEEN ? AND ? {$salaryDateCondition} AND te_amount > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
+    $stmt->execute($salaryParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
         $year = (int)$row['tax_year'];
@@ -150,8 +167,10 @@ try {
         $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_salary_tax_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $salaryUnclassifiedParams = [$from_year, $to_year];
+    $salaryUnclassifiedDateCondition = reportImportDateCondition($salaryDate, $report_filters, $salaryUnclassifiedParams);
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_salary_tax_data WHERE tax_year BETWEEN ? AND ? {$salaryUnclassifiedDateCondition} AND te_amount > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
+    $stmt->execute($salaryUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -169,8 +188,11 @@ try {
     while ($p = $pStmt->fetch(PDO::FETCH_ASSOC)) {
         $vatProvLabels[$p['provision_number']] = $p['provision_number'] . ' - ' . $p['legal_basis'];
     }
-    $stmt = $pdo->prepare("SELECT provision_number, YEAR(filing_period) as yr, SUM(expert_te) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? AND expert_te > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, yr");
-    $stmt->execute([$from_year, $to_year]);
+    $vatDate = reportBatchDateExpression('import_vat_data', 'batch_id', 'import_date');
+    $vatParams = [$from_year, $to_year];
+    $vatDateCondition = reportImportDateCondition($vatDate, $report_filters, $vatParams);
+    $stmt = $pdo->prepare("SELECT provision_number, YEAR(filing_period) as yr, SUM(expert_te) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? {$vatDateCondition} AND expert_te > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, yr");
+    $stmt->execute($vatParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
         $year = (int)$row['yr'];
@@ -180,8 +202,10 @@ try {
         $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
-    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(expert_te) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? AND expert_te > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY yr");
-    $stmt->execute([$from_year, $to_year]);
+    $vatUnclassifiedParams = [$from_year, $to_year];
+    $vatUnclassifiedDateCondition = reportImportDateCondition($vatDate, $report_filters, $vatUnclassifiedParams);
+    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(expert_te) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? {$vatUnclassifiedDateCondition} AND expert_te > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY yr");
+    $stmt->execute($vatUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['yr'];
         $te = (float)$row['te'];
@@ -195,8 +219,11 @@ try {
 
     // ----- 5. SEZ Developer -----
     $provisionData = []; $yearTotals = [];
-    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Developer' AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $sezDate = reportBatchDateExpression('import_sez_data', 'batch_id', 'import_date');
+    $sezDevParams = [$from_year, $to_year];
+    $sezDevDateCondition = reportImportDateCondition($sezDate, $report_filters, $sezDevParams);
+    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? {$sezDevDateCondition} AND te_amount > 0 AND type = 'Developer' AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
+    $stmt->execute($sezDevParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
         $year = (int)$row['tax_year'];
@@ -206,8 +233,10 @@ try {
         $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Developer' AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $sezDevUnclassifiedParams = [$from_year, $to_year];
+    $sezDevUnclassifiedDateCondition = reportImportDateCondition($sezDate, $report_filters, $sezDevUnclassifiedParams);
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? {$sezDevUnclassifiedDateCondition} AND te_amount > 0 AND type = 'Developer' AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
+    $stmt->execute($sezDevUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -220,8 +249,10 @@ try {
 
     // ----- 6. SEZ Investor -----
     $provisionData = []; $yearTotals = [];
-    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $sezInvParams = [$from_year, $to_year];
+    $sezInvDateCondition = reportImportDateCondition($sezDate, $report_filters, $sezInvParams);
+    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? {$sezInvDateCondition} AND te_amount > 0 AND type = 'Investor' AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
+    $stmt->execute($sezInvParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
         $year = (int)$row['tax_year'];
@@ -231,8 +262,10 @@ try {
         $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
         $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
     }
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $sezInvUnclassifiedParams = [$from_year, $to_year];
+    $sezInvUnclassifiedDateCondition = reportImportDateCondition($sezDate, $report_filters, $sezInvUnclassifiedParams);
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? {$sezInvUnclassifiedDateCondition} AND te_amount > 0 AND type = 'Investor' AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
+    $stmt->execute($sezInvUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -245,8 +278,10 @@ try {
 
     // ----- 7. Land Concession -----
     $provisionData = []; $yearTotals = [];
-    $stmt = $pdo->prepare("SELECT c.tax_year, SUM(r.te_land_concession) as te FROM te_land_concession_result r JOIN companies c ON r.company_id = c.id WHERE c.tax_year BETWEEN ? AND ? AND r.te_land_concession > 0 GROUP BY c.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $landParams = [$from_year, $to_year];
+    $landDateCondition = reportImportDateCondition($citDate, $report_filters, $landParams);
+    $stmt = $pdo->prepare("SELECT c.tax_year, SUM(r.te_land_concession) as te FROM te_land_concession_result r JOIN companies c ON r.company_id = c.id WHERE c.tax_year BETWEEN ? AND ? {$landDateCondition} AND r.te_land_concession > 0 GROUP BY c.tax_year");
+    $stmt->execute($landParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -259,8 +294,11 @@ try {
 
     // ----- 8. Resource Fee -----
     $provisionData = []; $yearTotals = [];
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_resource_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $resourceDate = reportBatchDateExpression('import_resource_data', 'batch_id', 'import_date');
+    $resourceParams = [$from_year, $to_year];
+    $resourceDateCondition = reportImportDateCondition($resourceDate, $report_filters, $resourceParams);
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_resource_data WHERE tax_year BETWEEN ? AND ? {$resourceDateCondition} AND te_amount > 0 GROUP BY tax_year");
+    $stmt->execute($resourceParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -273,8 +311,11 @@ try {
 
     // ----- 9. Royalty Fee -----
     $provisionData = []; $yearTotals = [];
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_royalty_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $royaltyDate = reportBatchDateExpression('import_royalty_data', 'batch_id', 'import_date');
+    $royaltyParams = [$from_year, $to_year];
+    $royaltyDateCondition = reportImportDateCondition($royaltyDate, $report_filters, $royaltyParams);
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_royalty_data WHERE tax_year BETWEEN ? AND ? {$royaltyDateCondition} AND te_amount > 0 GROUP BY tax_year");
+    $stmt->execute($royaltyParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['tax_year'];
         $te = (float)$row['te'];
@@ -396,7 +437,7 @@ foreach ($taxTypes as $tt) { $totalProvWithData += count($tt['provisions']); }
     <div class="col-md-8"><h2 class="fw-bold text-dark"><i class="fas fa-chart-pie me-2 text-primary"></i> Total TE by Provision</h2><p class="text-muted">Aggregated tax expenditure across all tax types, classified by provision.</p></div>
     <div class="col-md-4 text-end">
         <button id="expandAllBtn" class="btn btn-outline-primary shadow-sm me-2"><i class="fas fa-expand me-2"></i> Expand All</button>
-        <a href="?export=1&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
+        <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
         <button id="exportPdfBtn" class="btn btn-danger shadow-sm ms-2"><i class="fas fa-file-pdf me-2"></i> Export PDF</button>
     </div>
 </div>
@@ -406,6 +447,7 @@ foreach ($taxTypes as $tt) { $totalProvWithData += count($tt['provisions']); }
 <form method="GET" class="row align-items-end g-3">
     <div class="col-md-2"><label class="form-label small fw-bold text-muted text-uppercase">From Year</label><select name="from_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $from_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
     <div class="col-md-2"><label class="form-label small fw-bold text-muted text-uppercase">To Year</label><select name="to_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $to_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
+    <?= reportImportDateFilterControl("report_total_provision.php", $from_year, $to_year) ?>
     <div class="col-md-2"><button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button></div>
     <div class="col-md-2"><a href="report_total_provision.php" class="btn btn-outline-secondary w-100 border-0">Reset</a></div>
 </form></div></div>

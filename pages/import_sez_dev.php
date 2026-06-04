@@ -377,7 +377,10 @@ document.getElementById("uploadForm").addEventListener("submit", function() {
 
 function goToManualEntry() {
     const year = document.getElementById('manualTaxYear').value;
-    window.location.href = `view_sez_dev.php?batch=MANUAL_ENTRY_SEZDEV_${year}&auto_add=1&year=${year}`;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    window.location.href = `view_sez_dev.php?batch=MANUAL_ENTRY_SEZDEV_${year}_${stamp}&auto_add=1&year=${year}`;
 }
 </script>
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>

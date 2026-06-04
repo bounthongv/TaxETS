@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/batch_nav.php";
 $pdo = getDbConnection();
 
 $batch = $_GET["batch"] ?? "";
@@ -50,7 +51,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
             $stmt->execute($values);
             $message = "Company record updated successfully.";
         } elseif ($action === "add_company") {
-            $data["import_batch_id"] = $batch ?: "MANUAL_" . date("Ymd");
+            $manualYear = $data["tax_year"] ?? date("Y");
+            $data["import_batch_id"] = $batch ?: "MANUAL_ENTRY_CIT_" . $manualYear . "_" . date("YmdHis");
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
             $stmt = $pdo->prepare("INSERT INTO companies ($cols) VALUES ($ph)");
@@ -85,6 +87,7 @@ require_once __DIR__ . "/../includes/header.php";
       <p class="text-muted">Batch: <code><?= htmlspecialchars($batch ?: 'Manual Entry') ?></code> — <strong><?= count($companies) ?></strong> companies</p>
     </div>
     <div class="btn-group shadow-sm">
+      <?= batchHubBackButton() ?>
       <button class="btn btn-primary" onclick="addCompany()"><i class="fas fa-plus me-2"></i> Add Record to Batch</button>
       <a href="calculator.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Run TE Calculation</a>
     </div>

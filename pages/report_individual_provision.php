@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 
 $pdo = getDbConnection();
 $errors = [];
+$report_filters = reportFilterInput();
 
 // 1. Fetch All Available Years
 $all_years = [];
@@ -56,13 +58,16 @@ $grand_total_te = [];
 
 try {
     // A. Provision-matched TE
+    $pitDate = "(SELECT MAX(ipd.import_date) FROM import_pit_data ipd WHERE ipd.ptin COLLATE utf8mb4_unicode_ci = r.tin COLLATE utf8mb4_unicode_ci AND ipd.tax_year = r.tax_year)";
+    $params = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT p.provision_number, r.tax_year, SUM(r.te_amount) as te
                            FROM te_individual_result r
                            JOIN individual_provisions p ON FIND_IN_SET(p.provision_number COLLATE utf8mb4_general_ci, REPLACE(r.matched_provisions, ', ', ','))
                            WHERE r.tax_year BETWEEN ? AND ? AND r.te_amount > 0
                              AND r.matched_provisions IS NOT NULL AND r.matched_provisions != ''
+                             " . reportImportDateCondition($pitDate, $report_filters, $params) . "
                            GROUP BY p.provision_number, r.tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($params);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $num = $row['provision_number'];
         $yr = (int)$row['tax_year'];
@@ -70,22 +75,26 @@ try {
     }
 
     // B. Unclassified TE
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te
-                           FROM te_individual_result
-                           WHERE tax_year BETWEEN ? AND ? AND te_amount > 0
-                             AND (matched_provisions IS NULL OR matched_provisions = '')
-                           GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $params = [$from_year, $to_year];
+    $stmt = $pdo->prepare("SELECT r.tax_year, SUM(r.te_amount) as te
+                           FROM te_individual_result r
+                           WHERE r.tax_year BETWEEN ? AND ? AND r.te_amount > 0
+                             AND (r.matched_provisions IS NULL OR r.matched_provisions = '')
+                             " . reportImportDateCondition($pitDate, $report_filters, $params) . "
+                           GROUP BY r.tax_year");
+    $stmt->execute($params);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $other_te[(int)$row['tax_year']] = (float)$row['te'];
     }
 
     // C. Grand total (unique)
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te
-                           FROM te_individual_result
-                           WHERE tax_year BETWEEN ? AND ? AND te_amount > 0
-                           GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $params = [$from_year, $to_year];
+    $stmt = $pdo->prepare("SELECT r.tax_year, SUM(r.te_amount) as te
+                           FROM te_individual_result r
+                           WHERE r.tax_year BETWEEN ? AND ? AND r.te_amount > 0
+                           " . reportImportDateCondition($pitDate, $report_filters, $params) . "
+                           GROUP BY r.tax_year");
+    $stmt->execute($params);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $grand_total_te[(int)$row['tax_year']] = (float)$row['te'];
     }
@@ -203,7 +212,7 @@ require_once __DIR__ . "/../includes/header.php";
         <p class="text-muted">Tax Expenditure from Personal Income Tax, classified by the legal provision that generated the benefit.</p>
     </div>
     <div class="col-md-4 text-end">
-        <a href="?export=1&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
+        <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
         <button id="exportPdfBtn" class="btn btn-danger shadow-sm"><i class="fas fa-file-pdf me-2"></i> Export PDF</button>
     </div>
 </div>
@@ -231,6 +240,7 @@ require_once __DIR__ . "/../includes/header.php";
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?= reportImportDateFilterControl("report_individual_provision.php", $from_year, $to_year) ?>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button>
             </div>

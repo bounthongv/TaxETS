@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/batch_nav.php";
 $pdo = getDbConnection();
 
 $batch = $_GET["batch"] ?? "";
@@ -36,7 +37,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
             $stmt->execute($values);
             $message = "Record updated successfully.";
         } elseif ($action === "add_record") {
-            $new_batch = $batch ?: "MANUAL_ENTRY_SEZDEV_" . date("Y");
+            $manualYear = $data["tax_year"] ?? date("Y");
+            $new_batch = $batch ?: "MANUAL_ENTRY_SEZDEV_" . $manualYear . "_" . date("YmdHis");
             $data["batch_id"] = $new_batch;
             $data["type"] = 'Developer';
             $cols = implode(", ", array_keys($data));
@@ -87,6 +89,7 @@ require_once __DIR__ . "/../includes/header.php";
       <p class="text-muted">Batch: <code><?= htmlspecialchars($batch ?: 'Manual Entry') ?></code> — <strong><?= count($records) ?></strong> records</p>
     </div>
     <div class="btn-group shadow-sm">
+      <?= batchHubBackButton() ?>
       <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manualEntryModal"><i class="fas fa-plus me-2"></i> Add Manual Entry</button>
       <button class="btn btn-primary" onclick="addRecord()"><i class="fas fa-list me-2"></i> Add Record to Batch</button>
       <a href="te_sez_dev.php?batch=<?= urlencode($batch) ?>" class="btn btn-info text-white"><i class="fas fa-calculator me-2"></i> Run TE Calculation</a>
@@ -362,7 +365,10 @@ function editRecord(id) {
 
 function goToManualEntry() {
     const year = document.getElementById('manualTaxYear').value;
-    window.location.href = `view_sez_dev.php?batch=MANUAL_ENTRY_SEZDEV_${year}&auto_add=1&year=${year}`;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    window.location.href = `view_sez_dev.php?batch=MANUAL_ENTRY_SEZDEV_${year}_${stamp}&auto_add=1&year=${year}`;
 }
 
 function addRecord(prefilledYear = "") {

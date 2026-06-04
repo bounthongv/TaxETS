@@ -67,6 +67,7 @@ class TELandConcessionEngine {
         $area = (float)($row["concession_area_ha"] ?? 0);
         $benchmarkRate = (float)($row["benchmark_rate_usd"] ?? 0);
         $paid = (float)($row["concession_fee_paid_usd"] ?? 0);
+        $provisionName = trim((string)($row["provision_name"] ?? ""));
 
         if ($area <= 0) {
             throw new Exception("Concession area must be greater than zero");
@@ -79,7 +80,7 @@ class TELandConcessionEngine {
         }
 
         $benchmarkValue = $area * $benchmarkRate;
-        $teAmount = max(0, $benchmarkValue - $paid);
+        $teAmount = $provisionName === "" ? 0.0 : max(0, $benchmarkValue - $paid);
 
         return [
             "benchmark_value_usd" => round($benchmarkValue, 4),

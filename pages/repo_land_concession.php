@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/batch_nav.php";
 $pdo = getDbConnection();
 
 $batch = $_GET["batch"] ?? "";
@@ -18,10 +19,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
 
         // Sync Names from Dictionary IDs
         if (!empty($data['pro_id'])) {
-            $data['province'] = $pdo->query("SELECT pro_name FROM province WHERE pro_id = " . $pdo->quote($data['pro_id']))->fetchColumn();
+            $data['province'] = $pdo->query("SELECT province_name FROM provinces WHERE province_code = " . $pdo->quote($data['pro_id']))->fetchColumn();
         }
         if (!empty($data['dis_id'])) {
-            $data['district'] = $pdo->query("SELECT dis_name FROM district WHERE dis_id = " . $pdo->quote($data['dis_id']))->fetchColumn();
+            $data['district'] = $pdo->query("SELECT district_name FROM districts WHERE district_code = " . $pdo->quote($data['dis_id']))->fetchColumn();
         }
 
         if ($action === "update_land") {
@@ -31,7 +32,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"])) {
             $pdo->prepare("UPDATE repo_land_concession_data SET " . implode(", ", $fields) . " WHERE id = ?")->execute($values);
             $message = "Record updated.";
         } elseif ($action === "add_land") {
-            $data["import_batch_id"] = $batch ?: "MANUAL_ENTRY_LAND_" . date("Ymd");
+            $manualYear = $data["tax_year"] ?? date("Y");
+            $data["import_batch_id"] = $batch ?: "MANUAL_ENTRY_LAND_" . $manualYear . "_" . date("YmdHis");
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
             $pdo->prepare("INSERT INTO repo_land_concession_data ($cols) VALUES ($ph)")->execute(array_values($data));
@@ -47,8 +49,8 @@ if ($batch) {
     $records = $stmt->fetchAll();
 }
 
-$provinces = $pdo->query("SELECT pro_id, pro_name FROM province ORDER BY pro_name")->fetchAll();
-$all_districts = $pdo->query("SELECT dis_id, pro_id, dis_name FROM district ORDER BY dis_name")->fetchAll();
+$provinces = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces ORDER BY province_name")->fetchAll();
+$all_districts = $pdo->query("SELECT d.district_code AS dis_id, p.province_code AS pro_id, d.district_name AS dis_name FROM districts d LEFT JOIN provinces p ON d.province_id = p.id ORDER BY d.district_name")->fetchAll();
 $years = $pdo->query("SELECT DISTINCT tax_year FROM repo_land_concession_data WHERE import_batch_id = " . $pdo->quote($batch) . " ORDER BY tax_year DESC")->fetchAll(PDO::FETCH_COLUMN);
 
 require_once __DIR__ . "/../includes/header.php";
@@ -66,6 +68,7 @@ require_once __DIR__ . "/../includes/header.php";
       </p>
     </div>
     <div class="btn-group shadow-sm">
+      <?= batchHubBackButton() ?>
       <button class="btn btn-primary" onclick="addLand()"><i class="fas fa-plus me-2"></i> Add Record to Batch</button>
       <a href="calculate_land_concession.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Run Calculation</a>
     </div>

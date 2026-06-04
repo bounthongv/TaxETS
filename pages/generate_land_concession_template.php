@@ -13,26 +13,25 @@ $sheet = $spreadsheet->getActiveSheet();
 $sheet->setTitle("Land Concession Import");
 
 $headers = [
-    "A" => "No",
-    "B" => "TIN",
+    "A" => "TIN",
+    "B" => "CompanyName",
     "C" => "District",
     "D" => "Province",
-    "E" => "Company Name",
-    "F" => "Confirm Date",
-    "G" => "Concession Area (ha)",
-    "H" => "Benchmark Rate (USD/ha)",
-    "I" => "Contracted Rate (USD/ha)",
-    "J" => "Concession Fee Paid (USD)",
-    "K" => "Benchmark Value (USD)",
-    "L" => "Non-Tax TE (USD)",
-    "M" => "Provision Name"
+    "E" => "TaxItem",
+    "F" => "Year",
+    "G" => "Receiptdate",
+    "H" => "Concessionarea",
+    "I" => "BenchmarkRate",
+    "J" => "ContractedRate",
+    "K" => "ConcessionFeePaid",
+    "L" => "ProvisionName"
 ];
 
 foreach ($headers as $col => $label) {
     $sheet->getCell($col . "1")->setValue($label);
 }
 
-$sheet->getStyle("A1:M1")->applyFromArray([
+$sheet->getStyle("A1:L1")->applyFromArray([
     "font" => ["bold" => true, "size" => 11, "color" => ["rgb" => "FFFFFF"]],
     "fill" => ["fillType" => Fill::FILL_SOLID, "startColor" => ["rgb" => "198754"]],
     "alignment" => ["horizontal" => Alignment::HORIZONTAL_CENTER, "vertical" => Alignment::VERTICAL_CENTER, "wrapText" => true],
@@ -40,41 +39,40 @@ $sheet->getStyle("A1:M1")->applyFromArray([
 ]);
 
 $widths = [
-    "A" => 8, "B" => 18, "C" => 20, "D" => 20, "E" => 30, "F" => 14,
-    "G" => 18, "H" => 22, "I" => 22, "J" => 22, "K" => 22, "L" => 18, "M" => 28
+    "A" => 18, "B" => 30, "C" => 20, "D" => 20, "E" => 18, "F" => 12,
+    "G" => 14, "H" => 18, "I" => 18, "J" => 18, "K" => 22, "L" => 28
 ];
 foreach ($widths as $col => $width) {
     $sheet->getColumnDimension($col)->setWidth($width);
 }
 
-foreach (["G", "H", "I", "J", "K", "L"] as $col) {
+foreach (["H", "I", "J", "K"] as $col) {
     $sheet->getStyle($col . "2:" . $col . "101")->getNumberFormat()->setFormatCode("#,##0.0000");
 }
-$sheet->getStyle("F2:F101")->getNumberFormat()->setFormatCode("yyyy-mm-dd");
+$sheet->getStyle("G2:G101")->getNumberFormat()->setFormatCode("yyyy-mm-dd");
 
 $sheet->freezePane("A2");
 
 $example = [
-    1,
     "TIN-XXXXX",
+    "Example Company",
     "Example District",
     "Example Province",
-    "Example Company",
+    "",
+    2026,
     "2026-01-15",
     100.0000,
     50.0000,
     25.0000,
     2500.0000,
-    5000.0000,
-    2500.0000,
     "Rental state land concession"
 ];
 $sheet->fromArray($example, null, "A2");
-$sheet->getStyle("A2:M2")->applyFromArray([
+$sheet->getStyle("A2:L2")->applyFromArray([
     "fill" => ["fillType" => Fill::FILL_SOLID, "startColor" => ["rgb" => "FFF3CD"]],
     "borders" => ["allBorders" => ["borderStyle" => Border::BORDER_THIN]]
 ]);
-$sheet->getStyle("A2:M101")->applyFromArray([
+$sheet->getStyle("A2:L101")->applyFromArray([
     "borders" => ["allBorders" => ["borderStyle" => Border::BORDER_THIN]]
 ]);
 
@@ -87,24 +85,25 @@ $instructions->getColumnDimension("A")->setWidth(78);
 $instructionText = [
     "",
     "COLUMN GUIDE:",
-    "A: No - row number only; importer does not store this field",
-    "B: TIN - Tax Identification Number (required)",
+    "A: TIN - Tax Identification Number (required)",
+    "B: CompanyName - taxpayer/company name when available",
     "C: District - text, mapped to district dictionary when possible",
     "D: Province - text, mapped to province dictionary when possible",
-    "E: Company Name",
-    "F: Confirm Date - format YYYY-MM-DD",
-    "G: Concession Area in hectares",
-    "H: Benchmark Rate in USD per hectare",
-    "I: Contracted Rate in USD per hectare",
-    "J: Concession Fee Paid in USD",
-    "K: Benchmark Value in USD, optional; recalculation can update it",
-    "L: Non-Tax TE in USD, optional; recalculation can update it",
-    "M: Provision Name",
+    "E: TaxItem - optional; importer stores no separate field for this yet",
+    "F: Year - optional; if blank, the selected tax year on the import page is used",
+    "G: Receiptdate - receipt/confirmation date, format YYYY-MM-DD",
+    "H: Concessionarea - concession area in hectares",
+    "I: BenchmarkRate - benchmark rate used for benchmark value calculation",
+    "J: ContractedRate - contracted rate when available",
+    "K: ConcessionFeePaid - concession fee paid",
+    "L: ProvisionName - optional; leave blank when policy/provision is not confirmed",
     "",
     "NOTES:",
     "- Select Tax Year on the import page before upload",
-    "- Rows without TIN in column B are skipped",
+    "- Rows without TIN in column A are skipped",
     "- Fully blank rows are ignored",
+    "- Benchmark Value is calculated by the system as Concessionarea multiplied by BenchmarkRate",
+    "- Non-Tax TE is left as 0 when ProvisionName is blank",
     "- Delete or replace the example row before import"
 ];
 

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/batch_nav.php";
 require_once __DIR__ . "/../includes/header.php";
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -168,6 +169,7 @@ $provinces = $pdo->query("SELECT province_name FROM provinces ORDER BY province_
         </p>
     </div>
     <div class="col-md-4 text-end">
+        <?= batchHubBackButton() ?>
         <button class="btn btn-primary" onclick="addRecord()"><i class="fas fa-plus me-2"></i> Add Record to Batch</button>
         <a href="import_asycuda.php" class="btn btn-outline-secondary ms-1"><i class="fas fa-arrow-left me-1"></i> Back</a>
     </div>

@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
-$pdo = getDbConnection(); $errors = [];
+require_once __DIR__ . "/../includes/report_filters.php";
+$pdo = getDbConnection(); $errors = []; $report_filters = reportFilterInput();
 
 $all_years = [];
 try { $stmt = $pdo->query("SELECT DISTINCT tax_year FROM import_sez_data WHERE tax_year > 0"); while ($row = $stmt->fetch(PDO::FETCH_NUM)) { if ($row[0] > 1900 && $row[0] < 2100) $all_years[] = (int)$row[0]; } $all_years = array_unique($all_years); sort($all_years); } catch (Exception $e) { $errors[] = $e->getMessage(); }
@@ -11,12 +12,15 @@ $display_years = []; for ($y = $from_year; $y <= $to_year; $y++) { $display_year
 
 $matrix = []; $other_te = []; $grand_total_te = [];
 try {
-    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
-    $stmt->execute([$from_year, $to_year]); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $matrix[$row['provision_number']][(int)$row['tax_year']] = (float)$row['te']; }
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $other_te[(int)$row['tax_year']] = (float)$row['te']; }
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $grand_total_te[(int)$row['tax_year']] = (float)$row['te']; }
+    $params = [$from_year, $to_year];
+    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' AND provision_number IS NOT NULL AND provision_number != ''" . reportImportDateCondition(reportBatchDateExpression("import_sez_data", "batch_id", "import_date"), $report_filters, $params) . " GROUP BY provision_number, tax_year");
+    $stmt->execute($params); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $matrix[$row['provision_number']][(int)$row['tax_year']] = (float)$row['te']; }
+    $params = [$from_year, $to_year];
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor' AND (provision_number IS NULL OR provision_number = '')" . reportImportDateCondition(reportBatchDateExpression("import_sez_data", "batch_id", "import_date"), $report_filters, $params) . " GROUP BY tax_year");
+    $stmt->execute($params); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $other_te[(int)$row['tax_year']] = (float)$row['te']; }
+    $params = [$from_year, $to_year];
+    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_sez_data WHERE tax_year BETWEEN ? AND ? AND te_amount > 0 AND type = 'Investor'" . reportImportDateCondition(reportBatchDateExpression("import_sez_data", "batch_id", "import_date"), $report_filters, $params) . " GROUP BY tax_year");
+    $stmt->execute($params); while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { $grand_total_te[(int)$row['tax_year']] = (float)$row['te']; }
 } catch (Exception $e) { $errors[] = $e->getMessage(); }
 
 $chartData = []; $allProvNums = array_keys($matrix);
@@ -61,12 +65,13 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
 
 require_once __DIR__ . "/../includes/header.php";
 ?>
-<div class="row mb-4"><div class="col-md-8"><h2 class="fw-bold text-dark"><i class="fas fa-handshake me-2 text-primary"></i> SEZ Investor TE by Provision</h2><p class="text-muted">Tax Expenditure from SEZ Investors, classified by provision.</p></div><div class="col-md-4 text-end"><a href="?export=1&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a><button id="exportPdfBtn" class="btn btn-danger shadow-sm ms-2"><i class="fas fa-file-pdf me-2"></i> Export PDF</button></div></div>
+<div class="row mb-4"><div class="col-md-8"><h2 class="fw-bold text-dark"><i class="fas fa-handshake me-2 text-primary"></i> SEZ Investor TE by Provision</h2><p class="text-muted">Tax Expenditure from SEZ Investors, classified by provision.</p></div><div class="col-md-4 text-end"><a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a><button id="exportPdfBtn" class="btn btn-danger shadow-sm ms-2"><i class="fas fa-file-pdf me-2"></i> Export PDF</button></div></div>
 <?php if (!empty($errors)): ?><div class="alert alert-danger"><?= htmlspecialchars(implode('; ', $errors)) ?></div><?php endif; ?>
 <div class="card shadow-sm border-0 mb-4" style="border-radius:12px;"><div class="card-body bg-light rounded-3">
 <form method="GET" class="row align-items-end g-3">
     <div class="col-md-3"><label class="form-label small fw-bold text-muted text-uppercase">From Year</label><select name="from_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $from_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
     <div class="col-md-3"><label class="form-label small fw-bold text-muted text-uppercase">To Year</label><select name="to_year" class="form-select border-0 shadow-sm"><?php foreach ($all_years as $y): ?><option value="<?= $y ?>" <?= $y == $to_year ? 'selected' : '' ?>><?= $y ?></option><?php endforeach; ?></select></div>
+    <?= reportImportDateFilterControl("report_sez_inv_provision.php", $from_year, $to_year) ?>
     <div class="col-md-3"><button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button></div>
     <div class="col-md-3"><a href="report_sez_inv_provision.php" class="btn btn-outline-secondary w-100 border-0">Reset</a></div>
 </form></div></div>

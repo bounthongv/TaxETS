@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
+require_once __DIR__ . "/../includes/report_filters.php";
 
 $pdo = getDbConnection();
 $errors = [];
+$report_filters = reportFilterInput();
 
 $all_years = [];
 try {
@@ -44,31 +46,37 @@ $other_te = [];
 $grand_total_te = [];
 
 try {
+    $params = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te
                            FROM import_salary_tax_data
                            WHERE tax_year BETWEEN ? AND ? AND te_amount > 0
                              AND provision_number IS NOT NULL AND provision_number != ''
+                             " . reportImportDateCondition(reportBatchDateExpression("import_salary_tax_data", "batch_id", "import_date"), $report_filters, $params) . "
                            GROUP BY provision_number, tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($params);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $matrix[$row['provision_number']][(int)$row['tax_year']] = (float)$row['te'];
     }
 
+    $params = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te
                            FROM import_salary_tax_data
                            WHERE tax_year BETWEEN ? AND ? AND te_amount > 0
                              AND (provision_number IS NULL OR provision_number = '')
+                             " . reportImportDateCondition(reportBatchDateExpression("import_salary_tax_data", "batch_id", "import_date"), $report_filters, $params) . "
                            GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($params);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $other_te[(int)$row['tax_year']] = (float)$row['te'];
     }
 
+    $params = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te
                            FROM import_salary_tax_data
                            WHERE tax_year BETWEEN ? AND ? AND te_amount > 0
+                           " . reportImportDateCondition(reportBatchDateExpression("import_salary_tax_data", "batch_id", "import_date"), $report_filters, $params) . "
                            GROUP BY tax_year");
-    $stmt->execute([$from_year, $to_year]);
+    $stmt->execute($params);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $grand_total_te[(int)$row['tax_year']] = (float)$row['te'];
     }
@@ -148,7 +156,7 @@ require_once __DIR__ . "/../includes/header.php";
         <p class="text-muted">Tax Expenditure from Salary Tax (Withholding Tax), classified by provision.</p>
     </div>
     <div class="col-md-4 text-end">
-        <a href="?export=1&from_year=<?= $from_year ?>&to_year=<?= $to_year ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
+        <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success shadow-sm"><i class="fas fa-file-excel me-2"></i> Export Excel</a>
         <button id="exportPdfBtn" class="btn btn-danger shadow-sm"><i class="fas fa-file-pdf me-2"></i> Export PDF</button>
     </div>
 </div>
@@ -176,6 +184,7 @@ require_once __DIR__ . "/../includes/header.php";
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?= reportImportDateFilterControl("report_salary_tax_provision.php", $from_year, $to_year) ?>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="fas fa-search me-2"></i> Update</button>
             </div>
