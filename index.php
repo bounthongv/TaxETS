@@ -4,10 +4,25 @@ require_once __DIR__ . "/includes/header.php";
 $pdo = getDbConnection();
 
 // Live Stats
-$total_companies = $pdo->query("SELECT COUNT(*) FROM companies")->fetchColumn();
-$total_provisions = $pdo->query("SELECT COUNT(*) FROM profit_provisions")->fetchColumn();
-$total_te = $pdo->query("SELECT SUM(profit_tax_te) FROM te_profit_result")->fetchColumn();
-$latest_batch = $pdo->query("SELECT import_batch_id FROM companies ORDER BY id DESC LIMIT 1")->fetchColumn();
+$total_companies = 0;
+$total_provisions = 0;
+$total_te = 0;
+$latest_batch = "";
+
+try {
+    if (tableExists($pdo, 'companies')) {
+        $total_companies = (int) $pdo->query("SELECT COUNT(*) FROM companies")->fetchColumn();
+        $latest_batch = (string) ($pdo->query("SELECT import_batch_id FROM companies ORDER BY id DESC LIMIT 1")->fetchColumn() ?: "");
+    }
+    if (tableExists($pdo, 'profit_provisions')) {
+        $total_provisions = (int) $pdo->query("SELECT COUNT(*) FROM profit_provisions")->fetchColumn();
+    }
+    if (tableExists($pdo, 'te_profit_result')) {
+        $total_te = (float) $pdo->query("SELECT SUM(profit_tax_te) FROM te_profit_result")->fetchColumn();
+    }
+} catch (PDOException $e) {
+    // Keep dashboard loadable even if a stats table is missing or not yet imported.
+}
 ?>
 
 <div class="row mb-4">

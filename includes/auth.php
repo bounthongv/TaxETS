@@ -12,8 +12,10 @@ if (!isset($_SESSION["user_id"])) {
 // Update last activity
 if (isset($_SESSION["session_token"])) {
     $pdo = getDbConnection();
-    $stmt = $pdo->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_token = ?");
-    $stmt->execute([$_SESSION["session_token"]]);
+    if (tableExists($pdo, 'user_sessions')) {
+        $stmt = $pdo->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_token = ?");
+        $stmt->execute([$_SESSION["session_token"]]);
+    }
 }
 
 function isLoggedIn() {

@@ -1,0 +1,9 @@
+<?php
+// Copy this file to config.sys and update the values for the target machine.
+
+define('DB_HOST', 'localhost');
+define('DB_PORT', 3306);
+define('DB_NAME', 'tax_ets');
+define('DB_USER', 'tax_ets_user');
+define('DB_PASS', 'change_this_password');
+// Optional: define('BASE_URL', '') if auto-detection needs to be overridden.

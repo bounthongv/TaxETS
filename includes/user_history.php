@@ -2,6 +2,10 @@
 // Helper function to log user actions
 
 function logUserAction(PDO $pdo, ?int $user_id, string $user_name, string $action, string $details = "", string $ip_address = "") {
+    if (!tableExists($pdo, 'user_history')) {
+        return;
+    }
+
     if (empty($ip_address)) {
         $ip_address = $_SERVER["REMOTE_ADDR"] ?? "unknown";
     }

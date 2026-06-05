@@ -16,6 +16,7 @@ Thumbs.db
 
 # Config (sensitive) - keep template only
 # config.php - add your own credentials
+config.sys
 
 # Temporary images from PDF conversion
 tmp_images/
@@ -35,11 +36,16 @@ dump_*.php
 read_*.php
 migrate_*.php
 test_excel.php
+server_check.php
+verify_import.php
 
 # Temporary data files
 *.json
 temp_*.txt
 nul
+/tax_ets.sql
+/tax_ets.sql.gz
+/db/add_apis_admin_user.sql
 
 # Screenshots / images
 *.png

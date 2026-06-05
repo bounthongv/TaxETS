@@ -1,12 +1,12 @@
 <?php
 // Login page - NO auth check needed
+require_once __DIR__ . "/config.php";
+
 session_start();
 if (isset($_SESSION["user_id"])) {
     header("Location: " . BASE_URL . "/index.php");
     exit;
 }
-
-require_once __DIR__ . "/config.php";
 require_once __DIR__ . "/includes/db.php";
 
 $error = "";
@@ -30,8 +30,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $token = bin2hex(random_bytes(32));
         $_SESSION["session_token"] = $token;
         
-        $stmt = $pdo->prepare("INSERT INTO user_sessions (user_id, session_token, ip_address) VALUES (?, ?, ?)");
-        $stmt->execute([$user["id"], $token, $_SERVER["REMOTE_ADDR"] ?? "unknown"]);
+        if (tableExists($pdo, 'user_sessions')) {
+            $stmt = $pdo->prepare("INSERT INTO user_sessions (user_id, session_token, ip_address) VALUES (?, ?, ?)");
+            $stmt->execute([$user["id"], $token, $_SERVER["REMOTE_ADDR"] ?? "unknown"]);
+        }
         
         require_once __DIR__ . "/includes/user_history.php";
         logUserAction($pdo, $user["id"], $user["name"], "LOGIN", "User logged in", $_SERVER["REMOTE_ADDR"] ?? "");
