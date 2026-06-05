@@ -29,11 +29,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $prov_rows = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces")->fetchAll();
         $dist_rows = $pdo->query("SELECT d.district_code AS dis_id, p.province_code AS pro_id, d.district_name AS dis_name FROM districts d LEFT JOIN provinces p ON d.province_id = p.id")->fetchAll();
         
-        $prov_map = []; foreach ($prov_rows as $r) { $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']]; }
+        $prov_map = [];
+        foreach ($prov_rows as $r) {
+            $prov_map[strtoupper(trim($r['pro_name']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']];
+            $prov_map[strtoupper(trim($r['pro_id']))] = ['pro_id' => $r['pro_id'], 'name' => $r['pro_name']];
+        }
         $dist_map = []; 
+        $dist_by_code = [];
         $dist_by_province = [];
         foreach ($dist_rows as $r) { 
             $dist_map[$r['pro_id'] . '|' . strtoupper(trim($r['dis_name']))] = $r['dis_id']; 
+            $dist_by_code[strtoupper(trim($r['dis_id']))] = ['dis_id' => $r['dis_id'], 'pro_id' => $r['pro_id'], 'name' => $r['dis_name']];
             $dist_by_province[$r['pro_id']][] = ['dis_id' => $r['dis_id'], 'name' => strtoupper(trim($r['dis_name']))];
         }
 
@@ -94,6 +100,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $raw_prov = trim($sheet->getCell($colProvince . $row)->getCalculatedValue() ?? '');
             $raw_dist = trim($sheet->getCell($colDistrict . $row)->getCalculatedValue() ?? '');
+            if (preg_match('/^([^|]+)\s*\|/', $raw_prov, $matches)) {
+                $raw_prov = trim($matches[1]);
+            }
+            if (preg_match('/^([^|]+)\s*\|/', $raw_dist, $matches)) {
+                $raw_dist = trim($matches[1]);
+            }
             
             // Resolve IDs
             $upper_prov = strtoupper($raw_prov);
@@ -120,7 +132,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             if ($pro_id && !empty($raw_dist)) {
                 $clean_dist = preg_replace('/\s+District$/i', '', trim($raw_dist));
                 $upper_dist = strtoupper($clean_dist);
-                $dis_id = $dist_map[$pro_id . '|' . $upper_dist] ?? null;
+                $code_match = $dist_by_code[$upper_dist] ?? null;
+                $dis_id = ($code_match && $code_match['pro_id'] === $pro_id) ? $code_match['dis_id'] : ($dist_map[$pro_id . '|' . $upper_dist] ?? null);
                 if (!$dis_id && isset($dist_by_province[$pro_id])) {
                     $best_score = 999; $best_dis_id = null;
                     foreach ($dist_by_province[$pro_id] as $dd) {
@@ -156,6 +169,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $rowTaxYear = $tax_year;
             }
 
+            $provisionName = $cellVal($colProvisionName);
+            if (is_string($provisionName) && preg_match('/^[^|]+\|\s*(.+)$/', $provisionName, $matches)) {
+                $provisionName = trim($matches[1]);
+            }
+
             $data = [
                 "import_batch_id" => $batch_id,
                 "tax_year" => $rowTaxYear,
@@ -172,7 +190,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 "concession_fee_paid_usd" => $numberVal($colFeePaid),
                 "benchmark_value_usd" => $numberVal($colBenchmarkValue),
                 "non_tax_te_usd" => $numberVal($colNonTaxTe),
-                "provision_name" => $cellVal($colProvisionName),
+                "provision_name" => $provisionName,
             ];
 
             $cols = implode(", ", array_keys($data));

@@ -79,6 +79,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             }
 
             $raw_type = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? "");
+            if (preg_match('/^([^|]+)\s*\|/', $raw_type, $matches)) {
+                $raw_type = trim($matches[1]);
+            }
             $upper_type = strtoupper($raw_type);
             $resolved_type = $rt_by_no[$upper_type] ?? $rt_by_name[$upper_type] ?? null;
             if (!$resolved_type && strlen($upper_type) >= 2) {

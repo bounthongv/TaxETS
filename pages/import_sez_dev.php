@@ -125,6 +125,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $raw_prov = $isLegacyTemplate ? '' : trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
             $raw_dist = $isLegacyTemplate ? '' : trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
+            if (preg_match('/^([0-9A-Za-z]+)\s*\|/', $raw_prov, $m)) {
+                $raw_prov = $m[1];
+            }
+            if (preg_match('/^([0-9A-Za-z]+)\s*\|/', $raw_dist, $m)) {
+                $raw_dist = $m[1];
+            }
 
             // Province Resolution
             $upper_prov = strtoupper($raw_prov);
