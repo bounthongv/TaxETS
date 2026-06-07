@@ -12,6 +12,10 @@ function getDbConnection() {
 
     try {
         $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        // MySQL 8.0 default strict mode (ONLY_FULL_GROUP_BY) breaks
+        // our older GROUP BY queries that select non-aggregated columns.
+        // Disabling it at session level maintains backward compatibility.
+        $pdo->exec("SET SESSION sql_mode = ''");
         return $pdo;
     } catch (\PDOException $e) {
         // Suppress displaying actual error to user for security
