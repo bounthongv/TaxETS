@@ -1,5 +1,6 @@
-# Dependencies - install via composer
+# Dependencies - install via composer and npm
 vendor/
+node_modules/
 
 # IDE
 .idea/
@@ -14,9 +15,17 @@ Thumbs.db
 # Logs
 *.log
 
-# Config (sensitive) - keep template only
-# config.php - add your own credentials
+# Config (sensitive) - keep templates only
 config.sys
+config.php.example
+# NOTE: config.php is tracked in git (it has NO credentials - just loading logic).
+# Credentials live in config.sys (gitignored) or .env (gitignored).
+
+# Docker / env secrets - keep templates only
+.env                # real env file with passwords
+.env.local
+.env.production
+dist/               # built artifacts from save-images.sh
 
 # Temporary images from PDF conversion
 tmp_images/
@@ -54,6 +63,9 @@ nul
 # AI assistant configs
 GEMINI.md
 QWEN.md
+
+# Scratch / build scripts (template generators)
+scratch/
 
 # Log files
 *.log

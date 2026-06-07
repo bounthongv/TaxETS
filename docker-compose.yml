@@ -1,0 +1,112 @@
+# =====================================================================
+# Tax-ETS — Docker Compose (web app + optional MySQL)
+# ---------------------------------------------------------------------
+# This file describes the full local development stack:
+#   - service `web`: the PHP/Apache application container
+#   - service `db`:  a MySQL 8 container (OPTIONAL, see profiles below)
+#
+# PROFILES (a Docker Compose feature for "opt-in" services):
+#   By default, only `web` starts — it connects to a MySQL you already
+#   have running (your XAMPP MySQL, the Ubuntu server, etc.).
+#
+#   To spin up a fresh self-contained MySQL inside Docker too:
+#     docker compose --profile with-db up -d
+#
+#   The `with-db` profile includes both the `db` service AND a one-shot
+#   `db-init` service that loads the SQL schema on first start.
+# =====================================================================
+
+name: tax-ets
+
+services:
+  # -----------------------------------------------------------------
+  # WEB — the Tax-ETS PHP application
+  # -----------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tax-ets:latest
+    container_name: tax-ets-web
+    restart: unless-stopped
+    # NOTE: no host port mapping. Access is via the Caddy reverse
+    # proxy on http://tax-ets.local (see D:\docker-proxy\). If you
+    # need direct access for debugging, add `ports: ["8080:80"]`
+    # here and use `http://localhost:8080`.
+    environment:
+      # Reads by PHP's getenv() inside config.php
+      # NOTE: single-dash syntax (${VAR-}) is intentional - it lets
+      # an empty value in .env (e.g. DB_PASS= for XAMPP's no-pw root)
+      # propagate as empty into the container. The double-dash form
+      # (${VAR:-}) would replace empty with the default and break
+      # XAMPP-style installs.
+      DB_HOST: ${DB_HOST:-db}            # 'db' = the MySQL container, or use 'host.docker.internal' for XAMPP
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-tax_ets}
+      DB_USER: ${DB_USER:-tax_ets_user}
+      DB_PASS: ${DB_PASS-}
+      BASE_URL: ${BASE_URL-}
+      TZ: ${TZ:-Asia/Vientiane}
+    volumes:
+      # Persist import logs outside the container
+      # (otherwise `docker compose down` would wipe them)
+      - ./data/logs:/var/www/html/data/logs
+      # DEV MODE: mount host source so code edits reflect instantly.
+      - ./:/var/www/html
+    # depends_on is harmless even when DB is on the host; it just
+    # means "wait for db to be healthy" if db is in the same stack.
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false   # don't fail start if db isn't in this stack
+    networks:
+      - tax-ets-net
+      - proxy-net   # shared with D:\docker-proxy\ (Caddy reverse proxy)
+
+  # -----------------------------------------------------------------
+  # DB — MySQL 8 (only starts with --profile with-db)
+  # -----------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: tax-ets-db
+    profiles: ["with-db"]    # opt-in only
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root}
+      MYSQL_DATABASE: ${DB_NAME:-tax_ets}
+      MYSQL_USER: ${DB_USER:-tax_ets_user}
+      MYSQL_PASSWORD: ${DB_PASS:-change_this_password}
+      TZ: ${TZ:-Asia/Vientiane}
+    ports:
+      - "3307:3306"          # host 3307 → container 3306 (avoid clash with XAMPP)
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Schema bootstrap runs ONCE on first start (volume is empty).
+      # After that, the entrypoint is a no-op so the data is preserved.
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-change_me_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - tax-ets-net
+
+# =====================================================================
+# Volumes — persistent data lives outside the container filesystem
+# =====================================================================
+volumes:
+  mysql_data:
+    name: tax-ets-mysql-data
+
+# =====================================================================
+# Networks — tax-ets-net is private; proxy-net is shared with the
+# D:\docker-proxy\ Caddy container so it can reach us on port 80.
+# =====================================================================
+networks:
+  tax-ets-net:
+    name: tax-ets-net
+    driver: bridge
+  proxy-net:
+    name: proxy-net
+    external: true   # created by D:\docker-proxy\docker-compose.yml

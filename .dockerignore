@@ -1,0 +1,91 @@
+# =====================================================================
+# .dockerignore — what to NOT copy into the Docker image
+# ---------------------------------------------------------------------
+# Just like .gitignore, this file tells Docker which paths to skip
+# when building the image. Smaller context = faster builds + smaller
+# images + no accidentally-committed secrets inside the container.
+# =====================================================================
+
+# --- Version control ---
+.git
+.gitignore
+.gitattributes
+.github
+
+# --- IDE / editor ---
+.vscode
+.idea
+*.swp
+*.swo
+
+# --- Local config with real credentials ---
+# Keep config.sys.example for reference, but never the real file.
+# config.php is INTENTIONALLY KEPT: it's the env-var-aware v2 that
+# the Dockerfile needs at runtime. config.sys (legacy XAMPP creds)
+# is excluded; the app falls back to env vars / defaults without it.
+config.sys
+.env
+.env.local
+.env.production
+
+# --- Vendor dependencies ---
+# We rebuild these inside the image with `composer install`
+# Keeping the local copy would bloat the build context for nothing
+vendor/
+
+# --- Database backups ---
+db/*.sql.bak
+db/*backup*
+db/*_backup_*.sql
+*.dump
+*.sql.gz
+
+# --- Logs and runtime data ---
+data/logs/*.log
+*.log
+
+# --- Tests and scratch ---
+tests/
+scratch/
+legacy/
+legacy-add-edit/
+
+# --- Documentation that doesn't need to ship in the image ---
+# (We still keep these in git, just not in Docker)
+docs/
+
+# --- Agent / assistant notes ---
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+QWEN.md
+*.md
+!README.md
+# Note: README.md is kept; everything else *.md is excluded
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Node stuff (if any) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package.json
+package-lock.json
+
+# --- Temporary and backup files ---
+*.bak
+*.tmp
+*.orig
+*.rej
+*~
+
+# --- Docker artifacts (no recursion!) ---
+Dockerfile
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
+docker/
