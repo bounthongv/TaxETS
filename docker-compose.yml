@@ -53,6 +53,11 @@ services:
       - ./data/logs:/var/www/html/data/logs
       # DEV MODE: mount host source so code edits reflect instantly.
       - ./:/var/www/html
+    # Maps host.docker.internal for Linux Docker hosts (like the Ubuntu server)
+    # so the container can reach MySQL on the host via that hostname.
+    # Docker Desktop (Win/Mac) has this built-in; Linux needs explicit mapping.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # depends_on is harmless even when DB is on the host; it just
     # means "wait for db to be healthy" if db is in the same stack.
     depends_on:
