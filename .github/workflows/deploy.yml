@@ -1,0 +1,44 @@
+name: Deploy to Ubuntu Server
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    name: Pull, rebuild & restart on apis.com.la
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: SSH into server and deploy
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            set -e
+            echo "=== Pulling latest code ==="
+            cd /opt/tax-ets-docker
+            git pull
+
+            echo "=== Rebuilding Docker image ==="
+            docker compose build --quiet
+
+            echo "=== Restarting container ==="
+            docker compose down
+            docker compose up -d
+
+            echo "=== Installing Composer dependencies ==="
+            docker exec tax-ets-web composer install --no-dev --no-interaction --quiet
+
+            echo "=== Verifying container health ==="
+            sleep 3
+            HEALTH=$(docker inspect tax-ets-web --format '{{.State.Health.Status}}')
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "✅ Deployment successful — container is healthy"
+            else
+              echo "⚠️  Container status: $HEALTH"
+              docker logs tax-ets-web --tail 10
+            fi
