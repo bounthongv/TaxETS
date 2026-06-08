@@ -29,10 +29,10 @@ services:
     image: tax-ets:latest
     container_name: tax-ets-web
     restart: unless-stopped
-    # NOTE: no host port mapping. Access is via the Caddy reverse
-    # proxy on http://tax-ets.local (see D:\docker-proxy\). If you
-    # need direct access for debugging, add `ports: ["8080:80"]`
-    # here and use `http://localhost:8080`.
+    # NOTE: local-only host port (127.0.0.1:5000) for Apache reverse proxy
+    # on the production server. NOT exposed to the internet.
+    ports:
+      - "127.0.0.1:5000:80"
     environment:
       # Reads by PHP's getenv() inside config.php
       # NOTE: single-dash syntax (${VAR-}) is intentional - it lets
