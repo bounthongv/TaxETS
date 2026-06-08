@@ -22,7 +22,8 @@ config.php.example
 # Credentials live in config.sys (gitignored) or .env (gitignored).
 
 # Docker / env secrets - keep templates only
-.env                # real env file with passwords
+# real env file with passwords
+.env
 .env.local
 .env.production
 dist/               # built artifacts from save-images.sh
