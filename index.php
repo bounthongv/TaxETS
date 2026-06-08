@@ -27,7 +27,7 @@ try {
 
 <div class="row mb-4">
   <div class="col-12">
-    <h2 class="mb-1">Overview Dashboard</h2>
+    <h2 class="mb-1">Overview TaxETS Dashboard</h2>
     <p class="text-muted">Welcome to the Tax Expenditure Estimation System (Phase 1: Corporate Income Tax)</p>
   </div>
 </div>
@@ -110,7 +110,7 @@ try {
         </table>
         <?php if (!file_exists(__DIR__.'/vendor/autoload.php')): ?>
         <div class="alert alert-warning mt-3 py-2 small mb-0">
-          <i class="fas fa-exclamation-triangle me-1"></i> 
+          <i class="fas fa-exclamation-triangle me-1"></i>
           Run <code>composer install</code> on your server to enable Excel import.
         </div>
         <?php endif; ?>
