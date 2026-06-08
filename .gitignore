@@ -26,7 +26,8 @@ config.php.example
 .env
 .env.local
 .env.production
-dist/               # built artifacts from save-images.sh
+# built artifacts from save-images.sh
+dist/
 
 # Temporary images from PDF conversion
 tmp_images/
