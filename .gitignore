@@ -22,7 +22,6 @@ config.php.example
 # Credentials live in config.sys (gitignored) or .env (gitignored).
 
 # Docker / env secrets - keep templates only
-# real env file with passwords
 .env
 .env.local
 .env.production
@@ -71,3 +70,6 @@ scratch/
 
 # Log files
 *.log
+
+# Hermes profiles (local config with API keys)
+.hermes/
