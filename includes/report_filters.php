@@ -93,13 +93,8 @@ function reportTaxTypeData(PDO $pdo, array $filters): array {
             "date" => "(SELECT MAX(ipd.import_date) FROM import_pit_data ipd WHERE ipd.ptin COLLATE utf8mb4_unicode_ci = r.tin COLLATE utf8mb4_unicode_ci AND ipd.tax_year = r.tax_year)",
             "group" => " GROUP BY r.tax_year",
         ],
-        "salary" => [
-            "sql" => "SELECT s.tax_year, SUM(s.te_amount) FROM import_salary_tax_data s WHERE s.tax_year > 0 AND s.te_amount > 0",
-            "date" => reportBatchDateExpression("s", "batch_id", "import_date"),
-            "group" => " GROUP BY s.tax_year",
-        ],
         "vat_domestic" => [
-            "sql" => "SELECT YEAR(v.filing_period), SUM(v.expert_te) FROM import_vat_data v WHERE v.filing_period IS NOT NULL AND v.filing_period != '0000-00-00' AND YEAR(v.filing_period) > 0",
+            "sql" => "SELECT YEAR(v.filing_period), SUM(COALESCE(v.system_te, v.expert_te, 0)) FROM import_vat_data v WHERE v.filing_period IS NOT NULL AND v.filing_period != '0000-00-00' AND YEAR(v.filing_period) > 0",
             "date" => reportBatchDateExpression("v", "batch_id", "import_date"),
             "group" => " GROUP BY YEAR(v.filing_period)",
         ],

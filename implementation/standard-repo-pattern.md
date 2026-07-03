@@ -174,18 +174,21 @@ Use a single `modal-xl` for both Add and Edit with ID-based selects and chained 
 
 Generate import-ready Excel templates with data validation dropdowns using PhpSpreadsheet to prevent bad dictionary input.
 
-### 12.1 File Naming Convention
+### 12.1 Accepted Standard: Expert CIT Template
+Accepted standard CIT import template:
+`docs/final-template-expert/profit-tax-template-apis (Toukta).xlsx`
+
+All future CIT import/generation code must match the expert template column order. Any template drift must be reconciled with this accepted standard before merging.
+
+### 12.2 File Naming Convention
 ```
 pages/generate_{tax_type}_template.php
 ```
 
-### 12.2 Template Structure
-- **Row 1**: Styled header row with bold white text on blue (`#0D6EFD`) background
-- **Row 2**: Example/filler row with yellow background (`#FFF3CD`) — deletable
-- **Rows 3+**: Empty data rows with thin borders and number formatting
-- **Instruction Sheet**: Second sheet named "Instructions" with column guide and notes
+### 12.3 Accepted CIT Columns
+Use the expert template ordering and labels as source of truth for CIT imports and exports.
 
-### 12.3 Data Validation Dropdowns
+### 12.4 Data Validation Dropdowns
 Use PhpSpreadsheet's DataValidation with `TYPE_LIST` for constrained fields:
 
 ```php

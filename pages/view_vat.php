@@ -85,13 +85,13 @@ require_once __DIR__ . "/../includes/header.php";
 <div class="row mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center">
     <div>
-      <h2><a href="import_vat.php" class="text-dark text-decoration-none"><i class="fas fa-arrow-left me-2"></i></a> Domestic VAT Records</h2>
+      <h2><a href="import_domestic_vat.php" class="text-dark text-decoration-none"><i class="fas fa-arrow-left me-2"></i></a> Domestic VAT Records</h2>
       <p class="text-muted">Batch: <code><?= htmlspecialchars($batch ?: 'Manual Entry') ?></code> — <strong><?= count($records) ?></strong> records</p>
     </div>
     <div class="btn-group shadow-sm">
       <?= batchHubBackButton() ?>
       <button class="btn btn-primary" onclick="addRecord()"><i class="fas fa-plus me-2"></i> Add Record to Batch</button>
-      <a href="te_vat.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Run TE Calculation</a>
+      <a href="te_vat.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Go to TE Calculation</a>
     </div>
   </div>
 </div>

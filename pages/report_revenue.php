@@ -13,7 +13,8 @@ $report_filters = reportFilterInput();
 $revenue_data = [];
 $rev_stmt = $pdo->query("SELECT gdp_year, revenue_value FROM repo_gdp_revenue ORDER BY gdp_year");
 while ($row = $rev_stmt->fetch(PDO::FETCH_ASSOC)) {
-    $revenue_data[(int)$row['gdp_year']] = (float)$row['revenue_value'];
+    // revenue_value stored in kip (billions); multiply by 1,000 for trillions
+    $revenue_data[(int)$row['gdp_year']] = (float)$row['revenue_value'] * 1_000;
 }
 $revenue_years = array_keys($revenue_data);
 
@@ -22,7 +23,6 @@ $revenue_years = array_keys($revenue_data);
 // ===================================================================
 $profit_data = [];
 $pit_data = [];
-$salary_data = [];
 $vat_domestic_data = [];
 $customs_data = [];
 $excise_data = [];
@@ -37,7 +37,6 @@ try {
     $reportData = reportTaxTypeData($pdo, $report_filters);
     $profit_data = $reportData["profit"];
     $pit_data = $reportData["pit"];
-    $salary_data = $reportData["salary"];
     $vat_domestic_data = $reportData["vat_domestic"];
     $customs_data = $reportData["customs"];
     $excise_data = $reportData["excise"];
@@ -54,7 +53,7 @@ try {
 // Determine available year range
 $data_years = array_unique(array_merge(
     $revenue_years,
-    array_keys($profit_data), array_keys($pit_data), array_keys($salary_data),
+    array_keys($profit_data), array_keys($pit_data),
     array_keys($vat_domestic_data), array_keys($customs_data), array_keys($excise_data),
     array_keys($vat_import_data), array_keys($sez_dev_data), array_keys($sez_inv_data),
     array_keys($resource_data), array_keys($royalty_data), array_keys($land_concession_data)
@@ -90,7 +89,6 @@ if (empty($all_years)) { $all_years = $display_years; }
 $tax_types = [
     'Corporate Income Tax (Profit Tax)' => $profit_data,
     'Individual Income Tax (PIT)'       => $pit_data,
-    'Salary Tax'                        => $salary_data,
     'Domestic Value Added Tax (VAT)'    => $vat_domestic_data,
     'Customs Duty (Import)'             => $customs_data,
     'Excise Tax (Import)'               => $excise_data,
@@ -245,7 +243,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       <table class="table table-bordered table-hover mb-0 align-middle">
         <thead class="table-light small text-uppercase fw-bold">
           <tr>
-            <th class="ps-4" style="width: 300px;">Tax Type Category</th>
+            <th class="ps-4" style="min-width: 480px; white-space: nowrap;">Tax Type Category</th>
             <?php foreach ($display_years as $year): ?>
               <th class="text-end pe-4"><?= htmlspecialchars($year) ?> (%)</th>
             <?php endforeach; ?>
@@ -264,7 +262,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
             if (!$has_data) continue;
             ?>
           <tr>
-            <td class="ps-4 fw-bold text-dark"><?= htmlspecialchars($type) ?></td>
+            <td class="ps-4 fw-bold text-dark" style="white-space: nowrap;"><?= htmlspecialchars($type) ?></td>
             <?php foreach ($display_years as $year):
                 $te = (float)($data[$year] ?? 0);
                 $rev = (float)($revenue_data[$year] ?? 0);
@@ -279,7 +277,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
         </tbody>
         <tfoot>
           <tr class="table-info fw-bold">
-            <td class="ps-4">Total Revenue (Kip)</td>
+            <td class="ps-4" style="white-space: nowrap;">Total Revenue (Kip)</td>
             <?php foreach ($display_years as $year): ?>
               <td class="text-end pe-4"><?= ($revenue_data[$year] ?? 0) > 0 ? number_format($revenue_data[$year], 0) : '-' ?></td>
             <?php endforeach; ?>

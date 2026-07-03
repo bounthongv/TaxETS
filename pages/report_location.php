@@ -43,7 +43,6 @@ try {
     $year_queries = [
         "SELECT DISTINCT tax_year FROM companies WHERE tax_year > 0",
         "SELECT DISTINCT tax_year FROM te_individual_result WHERE tax_year > 0",
-        "SELECT DISTINCT tax_year FROM import_salary_tax_data WHERE tax_year > 0",
         "SELECT DISTINCT YEAR(filing_period) as yr FROM import_vat_data WHERE filing_period IS NOT NULL AND filing_period != '0000-00-00'",
         "SELECT DISTINCT YEAR(doc_date) as yr FROM asycuda_imports WHERE doc_date IS NOT NULL AND doc_date != '0000-00-00'",
         "SELECT DISTINCT tax_year FROM import_sez_data WHERE tax_year > 0",
@@ -127,19 +126,6 @@ try {
         else { $other_total[$yr] = ($other_total[$yr] ?? 0) + (float)$row['te']; }
     }
 
-    // C. Salary Tax by Province (via TIN)
-    $salaryParams = [$from_year, $to_year];
-    $stmt = $pdo->prepare("SELECT COALESCE(c.province, '') as loc, s.tax_year, SUM(s.te_amount) as te
-                           FROM import_salary_tax_data s LEFT JOIN companies c ON s.tin COLLATE utf8mb4_unicode_ci = c.tin COLLATE utf8mb4_unicode_ci
-                           WHERE s.tax_year BETWEEN ? AND ? AND s.te_amount > 0" . reportImportDateCondition(reportBatchDateExpression("s", "batch_id", "import_date"), $report_filters, $salaryParams) . " GROUP BY loc, s.tax_year");
-    $stmt->execute($salaryParams);
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $loc = trim($row['loc']);
-        $yr = (int)$row['tax_year'];
-        if ($loc) { $matrix[$loc][$yr] = ($matrix[$loc][$yr] ?? 0) + (float)$row['te']; }
-        else { $other_total[$yr] = ($other_total[$yr] ?? 0) + (float)$row['te']; }
-    }
-
     // D. SEZ Developer by Province
     $sezDevParams = [$from_year, $to_year];
     $stmt = $pdo->prepare("SELECT COALESCE(s.province, '') as loc, s.tax_year, SUM(s.te_amount) as te
@@ -181,7 +167,7 @@ try {
 
     // G. Domestic VAT -> Other / Unclassified (no province link)
     $vatParams = [$from_year, $to_year];
-    $stmt = $pdo->prepare("SELECT province, YEAR(filing_period) as yr, SUM(expert_te) as te
+    $stmt = $pdo->prepare("SELECT province, YEAR(filing_period) as yr, SUM(COALESCE(system_te, expert_te, 0)) as te
                            FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ?" . reportImportDateCondition(reportBatchDateExpression("import_vat_data", "batch_id", "import_date"), $report_filters, $vatParams) . " GROUP BY province, yr");
     $stmt->execute($vatParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {

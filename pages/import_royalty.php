@@ -28,9 +28,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $imported = 0; $skipped = 0;
         $error_log = [];
 
+        // Detect template type
+        $normalizeHeader = function($value) {
+            return strtolower(preg_replace('/[^a-z0-9]/i', '', (string)$value));
+        };
+        $headerP = $normalizeHeader($sheet->getCell("P1")->getCalculatedValue() ?? '');
+        $isNewTemplate = ($headerP === 'usercomment');
+
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
             $hasData = false;
-            foreach (range('A', 'F') as $col) {
+            foreach (range('A', $isNewTemplate ? 'P' : 'F') as $col) {
                 $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
                 if ($cellValue !== '') {
                     $hasData = true;
@@ -54,45 +61,68 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 return (float)str_replace(',', '', (string)($v ?? '0'));
             };
 
+            $yn = function($col) use ($sheet, $row) {
+                $v = strtolower(trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? '')));
+                return in_array($v, ['yes', 'y', '1', 'true']) ? 1 : 0;
+            };
+
+            $dateVal = function($col) use ($sheet, $row) {
+                $v = $sheet->getCell($col . $row)->getCalculatedValue();
+                if (!$v) return null;
+                if (is_numeric($v)) {
+                    try { return Date::excelToDateTimeObject($v)->format("Y-m-d"); } catch (Exception $e) { return null; }
+                }
+                try { return (new DateTime((string)$v))->format("Y-m-d"); } catch (Exception $e) { return null; }
+            };
+
             $b_val = $sheet->getCell("B" . $row)->getCalculatedValue();
-            $license_date = null;
+            $license_date = $dateVal("B");
 
-            if (is_numeric($b_val)) {
-                try { $license_date = Date::excelToDateTimeObject($b_val)->format("Y-m-d"); } catch (Exception $e) {}
-            } elseif (!empty($b_val)) {
-                try { $license_date = (new DateTime((string)$b_val))->format("Y-m-d"); } catch (Exception $e) {}
-            }
+            $tax_year = $isNewTemplate ? (int)$sheet->getCell("C" . $row)->getCalculatedValue() : (int)$sheet->getCell("F" . $row)->getCalculatedValue();
 
-            $tax_year = (int)$sheet->getCell("F" . $row)->getCalculatedValue();
-            if ($tax_year <= 0) {
-                $skipped++;
-                $error_log[] = "Row $row: Missing or invalid Year_data";
-                continue;
-            }
+            if ($isNewTemplate) {
+                $sale_value = $num("G");
+                $bench_rate = $num("E");
+                $contracted_rate = $num("F");
+                $fee_collected_val = $num("H");
+                $receipt_date = $dateVal("D");
 
-            $sale_value = $num("C");
-            $actual_rate_val = $num("D");
-            $fee_collected_val = $num("E");
-
-            if ($sale_value <= 0) {
-                $error_log[] = "Row $row: Non-positive Electricity Sale Value ($sale_value)";
+                $data = [
+                    "batch_id"      => $batch_id,
+                    "tax_year"      => $tax_year,
+                    "receipt_date"  => $receipt_date,
+                    "tin"           => $tin,
+                    "license_date"  => $license_date,
+                    "electricity_sale_value" => $sale_value,
+                    "actual_rate"   => $bench_rate,
+                    "contracted_rate" => $contracted_rate,
+                    "fee_collected" => $fee_collected_val,
+                    "paid_currency" => trim($sheet->getCell("I" . $row)->getCalculatedValue() ?? ''),
+                    "exchange_rate" => $num("J") ?: null,
+                    "use_user_fallback" => $yn("K"),
+                    "user_benchmark_rate" => $num("L") ?: null,
+                    "user_benchmark_fee"  => $num("M") ?: null,
+                    "user_te"       => $num("N") ?: null,
+                    "user_fallback_reason" => trim($sheet->getCell("O" . $row)->getCalculatedValue() ?? ''),
+                    "user_comment"  => trim($sheet->getCell("P" . $row)->getCalculatedValue() ?? ''),
+                ];
+            } else {
+                $sale_value = $num("C");
+                $actual_rate_val = $num("D");
+                $fee_collected_val = $num("E");
+                if ($sale_value <= 0) $error_log[] = "Row $row: Non-positive Electricity Sale Value ($sale_value)";
+                if ($actual_rate_val <= 0) $error_log[] = "Row $row: Non-positive Actual Rate ($actual_rate_val)";
+                if ($fee_collected_val < 0) $error_log[] = "Row $row: Negative Fee Collected ($fee_collected_val)";
+                $data = [
+                    "batch_id"      => $batch_id,
+                    "tax_year"      => $tax_year,
+                    "tin"           => $tin,
+                    "license_date"  => $license_date,
+                    "electricity_sale_value" => $sale_value,
+                    "actual_rate"   => $actual_rate_val,
+                    "fee_collected" => $fee_collected_val,
+                ];
             }
-            if ($actual_rate_val <= 0) {
-                $error_log[] = "Row $row: Non-positive Actual Rate ($actual_rate_val)";
-            }
-            if ($fee_collected_val < 0) {
-                $error_log[] = "Row $row: Negative Fee Collected ($fee_collected_val)";
-            }
-
-            $data = [
-                "batch_id"               => $batch_id,
-                "tax_year"               => $tax_year,
-                "tin"                    => $tin,
-                "license_date"           => $license_date,
-                "electricity_sale_value" => $sale_value,
-                "actual_rate"            => $actual_rate_val,
-                "fee_collected"          => $fee_collected_val
-            ];
 
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
@@ -164,7 +194,7 @@ require_once __DIR__ . "/../includes/header.php";
             <label class="form-label fw-bold">Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
             <div class="form-text mt-2 small">
-                <a href="<?= BASE_URL ?>/docs/Royalty%20fee_Template.xlsx" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Template</a>
+                <a href="generate_royalty_fee_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Royalty Fee Template (v1.0)</a>
             </div>
           </div>
           <div class="d-grid mt-4">

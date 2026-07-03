@@ -1,0 +1,17 @@
+-- SEZ VAT Import Data Table (import_sez_data)
+-- Expert-confirmed SEZ-VAT-template v1.0: 20 columns A-T
+-- Combined template for both SEZ Developers and SEZ Investors
+-- Existing columns preserved; new columns added for the 20-col template
+
+-- Migration: ALTER TABLE import_sez_data ADD COLUMN ...
+-- company_name      varchar(255)    AFTER tin
+-- village           varchar(255)    AFTER district
+-- sez_name          varchar(255)    AFTER village
+-- sez_developer     tinyint(1)      AFTER sez_name      (1=Yes, 0=No)
+-- sez_investor      tinyint(1)      AFTER sez_developer  (1=Yes, 0=No)
+-- sector            varchar(100)    AFTER sez_investor
+-- use_user_fallback tinyint(1)      AFTER amount_infra_dev
+-- user_benchmark_rate decimal(15,2) AFTER use_user_fallback
+-- user_te           decimal(15,2)   AFTER user_benchmark_rate
+-- user_fallback_reason varchar(255) AFTER user_te
+-- user_comment      text            AFTER user_fallback_reason

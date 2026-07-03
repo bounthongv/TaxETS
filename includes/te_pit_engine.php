@@ -9,7 +9,7 @@ class TEPitEngine {
     }
 
     public function calculateBatch(string $batch_id): array {
-        $this->pdo->prepare("DELETE tir FROM te_individual_result tir JOIN import_pit_data ipd ON tir.tin = ipd.ptin AND tir.tax_year = ipd.tax_year WHERE ipd.batch_id = ?")->execute([$batch_id]);
+        $this->pdo->prepare("DELETE tir FROM te_individual_result tir JOIN import_pit_data ipd ON tir.tin = ipd.ptin COLLATE utf8mb4_unicode_ci AND tir.tax_year = ipd.tax_year WHERE ipd.batch_id = ?")->execute([$batch_id]);
 
         $stmt = $this->pdo->prepare("SELECT * FROM import_pit_data WHERE batch_id = ?");
         $stmt->execute([$batch_id]);
@@ -30,7 +30,7 @@ class TEPitEngine {
                 if ($existingRow) {
                     $updateStmt = $this->pdo->prepare("UPDATE te_individual_result SET individual_name = ?, filing_date = ?, employment_income = ?, other_income = ?, actual_tax_paid = ?, benchmark_calculated_tax = ?, te_amount = ?, matched_provisions = ? WHERE id = ?");
                     $updateStmt->execute([
-                        $row['employee_name'],
+                        $row['individual_name'],
                         $row['filing_date'],
                         $result['employment_income'],
                         $result['other_income'],
@@ -45,7 +45,7 @@ class TEPitEngine {
                     $insertStmt->execute([
                         $row['tax_year'],
                         $row['ptin'],
-                        $row['employee_name'],
+                        $row['individual_name'],
                         $row['filing_date'],
                         $result['employment_income'],
                         $result['other_income'],
@@ -169,8 +169,12 @@ class TEPitEngine {
 
     private function calculateActualTaxPaid(array $row): float {
         $expertTE = (float)($row['expert_te_total'] ?? 0);
-        $income = $this->sumProvisionAmounts($row, ['21', '22', '23_1', '23_2', '24', '25', '26', '27', '28_1', '28_2', '29']);
-        return max(0, $income * 0.10 - $expertTE);
+        if ($expertTE > 0) {
+            $income = $this->sumProvisionAmounts($row, ['21', '22', '23_1', '23_2', '24', '25', '26', '27', '28_1', '28_2', '29']);
+            return max(0, $income * 0.10 - $expertTE);
+        }
+        // No expert TE data — assume 0 actual tax paid (estimating from scratch)
+        return 0.0;
     }
 
     public function matchProvisions(array $row): array {

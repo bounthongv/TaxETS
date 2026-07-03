@@ -89,7 +89,7 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="btn-group shadow-sm">
       <?= batchHubBackButton() ?>
       <button class="btn btn-primary" onclick="addCompany()"><i class="fas fa-plus me-2"></i> Add Record to Batch</button>
-      <a href="calculator.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Run TE Calculation</a>
+      <a href="calculator.php?batch=<?= urlencode($batch) ?>" class="btn btn-success"><i class="fas fa-calculator me-2"></i> Go to TE Calculation</a>
     </div>
   </div>
 </div>

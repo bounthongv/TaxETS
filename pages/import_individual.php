@@ -1,4 +1,13 @@
 <?php
+/**
+ * Individual Tax (PIT) Data Import
+ * Reads the expert-confirmed PIT template (PIT-template-apis v1.0).
+ * Template columns (35 cols A-AI):
+ *   A=Filing Date, B=Tax Year, C=PTIN, D=Individual Name
+ *   E-S = Provision amounts #21-#30 + condition flags
+ *   T-AI = User Fallback fields
+ */
+
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
 require_once __DIR__ . "/../vendor/autoload.php";
@@ -14,11 +23,17 @@ $pdo = getDbConnection();
 $message = "";
 $msg_type = "success";
 
+// Helper: parse Yes/No text to 1/0
+function yn($v): int {
+    $s = strtoupper(trim((string)($v ?? '')));
+    return ($s === 'YES' || $s === 'Y' || $s === '1') ? 1 : 0;
+}
+
 // --- Handle Upload ---
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
     try {
         $file = $_FILES["excel_file"];
-        $tax_year = (int)$_POST["tax_year"];
+        $tax_year_default = (int)$_POST["tax_year"];
 
         if ($file["error"] !== UPLOAD_ERR_OK) {
             throw new Exception("Upload error.");
@@ -28,100 +43,156 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         }
 
         $spreadsheet = IOFactory::load($file["tmp_name"]);
-        $sheet = $spreadsheet->getActiveSheet();
+        $sheet = $spreadsheet->getSheetByName("PIT Import");
+        if (!$sheet) {
+            $sheet = $spreadsheet->getActiveSheet();
+        }
         $batch_id = "BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
-
         $max_row = $sheet->getHighestRow();
-        $empty_streak = 0;
-        for ($row = 2; $row <= $max_row; $row++) {
-            $ptin = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? "");
 
-            $is_empty_row = true;
-            foreach (range("A", "AC") as $col) {
-                $cell_value = $sheet->getCell($col . $row)->getCalculatedValue();
-                if (trim((string)($cell_value ?? "")) !== "") {
-                    $is_empty_row = false;
-                    break;
-                }
-            }
-
-            if ($is_empty_row) {
-                $empty_streak++;
-                if ($empty_streak >= 20) break; // Stop after trailing empty rows.
-                continue;
-            }
-
-            if (empty($ptin)) {
-                $empty_streak = 0;
-                $skipped++;
-                $error_log[] = "Row $row: PTIN is required";
-                continue;
-            }
-            $empty_streak = 0;
-
-            $num = function($col) use ($sheet, $row) {
+        // Helper: numeric from cell
+        $num = function($col) use ($sheet) {
+            static $row = 0;
+            // This will be bound dynamically inside the loop via closure
+            // Actually let's use a different approach
+            return function($col, $row) use ($sheet) {
                 $v = $sheet->getCell($col . $row)->getCalculatedValue();
                 if (is_numeric($v)) return (float)$v;
                 return (float)str_replace(',', '', (string)($v ?? '0'));
             };
+        };
+        $getNum = function($col, $row) use ($sheet) {
+            $v = $sheet->getCell($col . $row)->getCalculatedValue();
+            if (is_numeric($v)) return (float)$v;
+            return (float)str_replace(',', '', (string)($v ?? '0'));
+        };
+        $getStr = function($col, $row) use ($sheet) {
+            return trim($sheet->getCell($col . $row)->getCalculatedValue() ?? "");
+        };
 
-            $excel_date_val = $sheet->getCell("A" . $row)->getCalculatedValue();
-            $excel_year = $tax_year;
+        // Prepare SQL once
+        $cols = [
+            "batch_id", "tax_year", "filing_date", "ptin", "individual_name",
+            "amount_21","amount_22","amount_23_1","amount_23_2",
+            "amount_24","amount_25","amount_26","amount_27","amount_28_1","amount_28_2","amount_29",
+            "is_stock_listed","is_banking_system","is_ss_member","ss_contribution","use_fallback",
+            "user_te_21","user_te_22","user_te_23_1","user_te_23_2",
+            "user_te_24","user_te_25","user_te_26","user_te_27","user_te_28_1","user_te_28_2","user_te_29","user_te_30","user_te_total",
+            "user_fallback_reason","user_comment",
+        ];
+        $cn = implode(", ", $cols);
+        $ph = implode(", ", array_fill(0, count($cols), "?"));
+        $stmt = $pdo->prepare("INSERT INTO import_pit_data ($cn) VALUES ($ph)");
+
+        $empty_streak = 0;
+        for ($row = 5; $row <= $max_row; $row++) {  // Row 5 = first data row
+            $ptin = $getStr("C", $row);
+
+            // Check if whole row is empty
+            $is_empty = true;
+            foreach (["A","B","C","D"] as $c) {
+                if ($getStr($c, $row) !== "") { $is_empty = false; break; }
+            }
+            if ($is_empty) {
+                // Check amount cols too
+                foreach (["E","K","Q","S"] as $c) {
+                    if ($getNum($c, $row) != 0) { $is_empty = false; break; }
+                }
+            }
+            if ($is_empty) {
+                $empty_streak++;
+                if ($empty_streak >= 20) break;
+                continue;
+            }
+            $empty_streak = 0;
+            if (empty($ptin)) {
+                $skipped++;
+                $error_log[] = "Row $row: PTIN is required";
+                continue;
+            }
+
+            // --- Parse Filing Date ---
             $filing_date = null;
-            if (is_numeric($excel_date_val)) {
+            $excel_year = $tax_year_default;
+            $raw_date = $sheet->getCell("A" . $row)->getCalculatedValue();
+            if (is_numeric($raw_date)) {
                 try {
-                    $d = Date::excelToDateTimeObject($excel_date_val);
-                    $excel_year = (int)$d->format("Y");
+                    $d = Date::excelToDateTimeObject($raw_date);
                     $filing_date = $d->format("Y-m-d");
                 } catch (Exception $e) {}
+            } elseif (!empty($raw_date)) {
+                $filing_date = date("Y-m-d", strtotime((string)$raw_date) ?: time());
             }
 
-            $ss_val = trim($sheet->getCell("AB" . $row)->getCalculatedValue() ?? "");
-            $is_ss = !empty($ss_val) ? 1 : 0;
-
-            // Validate SS Member field
-            $upper_ss = strtoupper($ss_val);
-            if (!empty($ss_val) && $upper_ss !== "YES" && $upper_ss !== "NO") {
-                $error_log[] = "Row $row: Invalid Social Security value '$ss_val' (expected YES/NO)";
+            // --- Parse Tax Year ---
+            $raw_year = $sheet->getCell("B" . $row)->getCalculatedValue();
+            if (is_numeric($raw_year) && (int)$raw_year > 2000) {
+                $excel_year = (int)$raw_year;
             }
+
+            // --- Amounts (E, F, G, H, I, J, K, M, N, P, Q, S) ---
+            $amount_21 = $getNum("E", $row);
+            $amount_22 = $getNum("F", $row);
+            $amount_23_1 = $getNum("G", $row);
+            $amount_23_2 = $getNum("H", $row);
+            $amount_24 = $getNum("I", $row);
+            $amount_25 = $getNum("J", $row);
+            $amount_26 = $getNum("K", $row);
+            $amount_27 = $getNum("M", $row);
+            $amount_28_1 = $getNum("N", $row);
+            $amount_28_2 = $getNum("P", $row);
+            $amount_29 = $getNum("Q", $row);
+
+            // --- Condition Flags (L, O, R) ---
+            $is_stock_listed  = yn($getStr("L", $row));
+            $is_banking_system = yn($getStr("O", $row));
+            $is_ss_member     = yn($getStr("R", $row));
+
+            // --- Social Security Contribution (S) ---
+            $ss_contribution = $getNum("S", $row);
+
+            // --- Fallback flag (T) ---
+            $use_fallback = yn($getStr("T", $row));
+
+            // --- User TE values (U-AF) ---
+            $user_te_21   = ($use_fallback && $getStr("U", $row) !== "") ? $getNum("U", $row) : null;
+            $user_te_22   = ($use_fallback && $getStr("V", $row) !== "") ? $getNum("V", $row) : null;
+            $user_te_23_1 = ($use_fallback && $getStr("W", $row) !== "") ? $getNum("W", $row) : null;
+            $user_te_23_2 = ($use_fallback && $getStr("X", $row) !== "") ? $getNum("X", $row) : null;
+            $user_te_24   = ($use_fallback && $getStr("Y", $row) !== "") ? $getNum("Y", $row) : null;
+            $user_te_25   = ($use_fallback && $getStr("Z", $row) !== "") ? $getNum("Z", $row) : null;
+            $user_te_26   = ($use_fallback && $getStr("AA", $row) !== "") ? $getNum("AA", $row) : null;
+            $user_te_27   = ($use_fallback && $getStr("AB", $row) !== "") ? $getNum("AB", $row) : null;
+            $user_te_28_1 = ($use_fallback && $getStr("AC", $row) !== "") ? $getNum("AC", $row) : null;
+            $user_te_28_2 = ($use_fallback && $getStr("AD", $row) !== "") ? $getNum("AD", $row) : null;
+            $user_te_29   = ($use_fallback && $getStr("AE", $row) !== "") ? $getNum("AE", $row) : null;
+            $user_te_30   = ($use_fallback && $getStr("AF", $row) !== "") ? $getNum("AF", $row) : null;
+            $user_te_total = ($getStr("AG", $row) !== "") ? $getNum("AG", $row) : null;
+
+            // --- User Meta (AH, AI) ---
+            $user_fallback_reason = $use_fallback ? $getStr("AH", $row) : null;
+            $user_comment = $getStr("AI", $row);
+            if ($user_comment === "") $user_comment = null;
 
             $data = [
-                "batch_id"       => $batch_id,
-                "tax_year"       => $excel_year > 0 ? $excel_year : $tax_year,
-                "employee_name"  => $sheet->getCell("B" . $row)->getCalculatedValue(),
-                "filing_date"    => $filing_date,
-                "ptin"           => $ptin,
-                "amount_21"      => $num("D"),
-                "amount_22"      => $num("F"),
-                "amount_23_1"    => $num("H"),
-                "amount_23_2"    => $num("J"),
-                "amount_24"      => $num("L"),
-                "amount_25"      => $num("N"),
-                "amount_26"      => $num("P"),
-                "amount_27"      => $num("S"),
-                "amount_28_1"    => $num("U"),
-                "amount_28_2"    => $num("X"),
-                "amount_29"      => $num("Z"),
-                "is_ss_member"   => $is_ss,
-                "expert_te_21"   => $num("E"),
-                "expert_te_22"   => $num("G"),
-                "expert_te_23_1" => $num("I"),
-                "expert_te_23_2" => $num("K"),
-                "expert_te_24"   => $num("M"),
-                "expert_te_25"   => $num("O"),
-                "expert_te_26"   => $num("R"),
-                "expert_te_27"   => $num("T"),
-                "expert_te_28_1" => $num("W"),
-                "expert_te_28_2" => $num("Y"),
-                "expert_te_29"   => $num("AA"),
-                "expert_te_total"=> $num("AC")
+                $batch_id,
+                $excel_year,
+                $filing_date,
+                $ptin,
+                $getStr("D", $row),
+                $amount_21, $amount_22, $amount_23_1, $amount_23_2,
+                $amount_24, $amount_25, $amount_26,
+                $amount_27, $amount_28_1, $amount_28_2, $amount_29,
+                $is_stock_listed, $is_banking_system, $is_ss_member, $ss_contribution, $use_fallback,
+                $user_te_21, $user_te_22, $user_te_23_1, $user_te_23_2,
+                $user_te_24, $user_te_25, $user_te_26, $user_te_27,
+                $user_te_28_1, $user_te_28_2, $user_te_29, $user_te_30, $user_te_total,
+                $user_fallback_reason, $user_comment,
             ];
 
-            $cols = implode(", ", array_keys($data));
-            $ph = implode(", ", array_fill(0, count($data), "?"));
-            $pdo->prepare("INSERT INTO import_pit_data ($cols) VALUES ($ph)")->execute(array_values($data));
+            $stmt->execute($data);
             $imported++;
         }
 
@@ -155,8 +226,8 @@ require_once __DIR__ . "/../includes/header.php";
 
 <div class="row mb-3">
   <div class="col-12">
-    <h2><i class="fas fa-file-import me-2"></i> Individual Tax Data Import</h2>
-    <p class="text-muted">Upload the Individual Tax Excel template or manage manual entries.</p>
+    <h2><i class="fas fa-file-import me-2"></i> Individual Tax (PIT) Data Import</h2>
+    <p class="text-muted">Upload the PIT Excel template (v1.0) or manage manual entries.</p>
   </div>
 </div>
 
@@ -174,7 +245,7 @@ require_once __DIR__ . "/../includes/header.php";
       <div class="card-body">
         <form method="POST" enctype="multipart/form-data" id="uploadForm">
           <div class="mb-3">
-            <label class="form-label fw-bold">Tax Year</label>
+            <label class="form-label fw-bold">Tax Year <small class="text-muted">(fallback if not in file)</small></label>
             <select name="tax_year" class="form-select" required>
               <?php for ($y = date("Y"); $y >= 2015; $y--): ?>
               <option value="<?= $y ?>"><?= $y ?></option>
@@ -185,7 +256,7 @@ require_once __DIR__ . "/../includes/header.php";
             <label class="form-label fw-bold">Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
             <div class="form-text mt-2 small">
-                <a href="generate_individual_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Template with Dropdowns</a>
+                <a href="generate_pit_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download PIT Import Template (v1.0)</a>
             </div>
           </div>
           <div class="d-grid mt-4">
@@ -195,30 +266,56 @@ require_once __DIR__ . "/../includes/header.php";
       </div>
     </div>
 
+    <!-- Column Mapping -->
     <div class="card mt-3 shadow-sm">
       <div class="card-header bg-secondary text-white fw-bold"><i class="fas fa-table me-2"></i> Excel Column Mapping</div>
       <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-sm table-bordered mb-0 small">
-          <thead class="table-light"><tr><th>Col</th><th>Field</th></tr></thead>
+          <thead class="table-light"><tr><th>Col</th><th>Field</th><th>Type</th></tr></thead>
           <tbody>
-            <tr><td>A</td><td>Filing Date</td></tr>
-            <tr><td>B</td><td>Employee Name</td></tr>
-            <tr><td>C</td><td>PTIN (Personal Tax ID)</td></tr>
-            <tr><td>D / E</td><td>Overtime/Night Shift (Amount / Expert TE)</td></tr>
-            <tr><td>F / G</td><td>Severance/Redundancy (Amount / Expert TE)</td></tr>
-            <tr><td>H / I</td><td>Rental Building (Amount / Expert TE)</td></tr>
-            <tr><td>J / K</td><td>Rental Land/Other (Amount / Expert TE)</td></tr>
-            <tr><td>L / M</td><td>Consulting/Service (Amount / Expert TE)</td></tr>
-            <tr><td>N / O</td><td>Contractor Income (Amount / Expert TE)</td></tr>
-            <tr><td>P / R</td><td>Shares Transfer (Amount / Expert TE)</td></tr>
-            <tr><td>S / T</td><td>Dividends (Amount / Expert TE)</td></tr>
-            <tr><td>U / W</td><td>Interest Loan (Amount / Expert TE)</td></tr>
-            <tr><td>X / Y</td><td>Interest Bonds (Amount / Expert TE)</td></tr>
-            <tr><td>Z / AA</td><td>Gifts/Bonus (Amount / Expert TE)</td></tr>
-            <tr><td>AB</td><td>Social Security Member (YES/NO)</td></tr>
-            <tr><td>AC</td><td>Expert TE Total</td></tr>
+            <tr class="table-secondary"><td colspan="3" class="fw-bold text-muted small">PRIMARY OPTIONAL</td></tr>
+            <tr><td>A</td><td>Filing Date</td><td>Date</td></tr>
+            <tr><td>D</td><td>Individual Name</td><td>Text</td></tr>
+            <tr class="table-primary"><td colspan="3" class="fw-bold text-primary small">PRIMARY REQUIRED</td></tr>
+            <tr><td>B</td><td>Tax Year</td><td>Number</td></tr>
+            <tr><td>C</td><td>PTIN</td><td>Text</td></tr>
+            <tr class="table-info"><td colspan="3" class="fw-bold text-info small">PRIMARY CONDITIONAL — Provision Amounts</td></tr>
+            <tr><td>E</td><td>Amount #21 Overtime LAK</td><td>Numeric</td></tr>
+            <tr><td>F</td><td>Amount #22 Uniform / Safety LAK</td><td>Numeric</td></tr>
+            <tr><td>G</td><td>Amount #23.1 Spouse Allowance LAK</td><td>Numeric</td></tr>
+            <tr><td>H</td><td>Amount #23.2 Child Allowance LAK</td><td>Numeric</td></tr>
+            <tr><td>I</td><td>Amount #24 Government Allowance LAK</td><td>Numeric</td></tr>
+            <tr><td>J</td><td>Amount #25 Student Allowance LAK</td><td>Numeric</td></tr>
+            <tr><td>K</td><td>Amount #26 Share Sale Profit LAK</td><td>Numeric</td></tr>
+            <tr><td>L</td><td>Lao Stock Exchange Listed?</td><td>Yes / No</td></tr>
+            <tr><td>M</td><td>Amount #27 Dividend Income LAK</td><td>Numeric</td></tr>
+            <tr><td>N</td><td>Amount #28.1 Deposit Interest LAK</td><td>Numeric</td></tr>
+            <tr><td>O</td><td>Deposit in Banking System?</td><td>Yes / No</td></tr>
+            <tr><td>P</td><td>Amount #28.2 Bond Interest LAK</td><td>Numeric</td></tr>
+            <tr><td>Q</td><td>Amount #29 Security Bonus LAK</td><td>Numeric</td></tr>
+            <tr><td>R</td><td>Social Security Member?</td><td>Yes / No</td></tr>
+            <tr><td>S</td><td>Social Security Contribution LAK #30</td><td>Numeric</td></tr>
+            <tr class="table-warning"><td colspan="3" class="fw-bold text-warning small">USER FALLBACK</td></tr>
+            <tr><td>T</td><td>Use User Fallback?</td><td>Yes / No</td></tr>
+            <tr><td>U</td><td>User TE #21</td><td>Numeric</td></tr>
+            <tr><td>V</td><td>User TE #22</td><td>Numeric</td></tr>
+            <tr><td>W</td><td>User TE #23.1</td><td>Numeric</td></tr>
+            <tr><td>X</td><td>User TE #23.2</td><td>Numeric</td></tr>
+            <tr><td>Y</td><td>User TE #24</td><td>Numeric</td></tr>
+            <tr><td>Z</td><td>User TE #25</td><td>Numeric</td></tr>
+            <tr><td>AA</td><td>User TE #26</td><td>Numeric</td></tr>
+            <tr><td>AB</td><td>User TE #27</td><td>Numeric</td></tr>
+            <tr><td>AC</td><td>User TE #28.1</td><td>Numeric</td></tr>
+            <tr><td>AD</td><td>User TE #28.2</td><td>Numeric</td></tr>
+            <tr><td>AE</td><td>User TE #29</td><td>Numeric</td></tr>
+            <tr><td>AF</td><td>User TE #30</td><td>Numeric</td></tr>
+            <tr><td>AG</td><td>User TE Total</td><td>Numeric</td></tr>
+            <tr><td>AH</td><td>User Fallback Reason</td><td>Text</td></tr>
+            <tr><td>AI</td><td>User Comment</td><td>Text</td></tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>

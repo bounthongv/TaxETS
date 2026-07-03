@@ -153,33 +153,6 @@ try {
 
     // ----- 3. Salary Tax -----
     $provisionData = []; $yearTotals = [];
-    $salaryDate = reportBatchDateExpression('import_salary_tax_data', 'batch_id', 'import_date');
-    $salaryParams = [$from_year, $to_year];
-    $salaryDateCondition = reportImportDateCondition($salaryDate, $report_filters, $salaryParams);
-    $stmt = $pdo->prepare("SELECT provision_number, tax_year, SUM(te_amount) as te FROM import_salary_tax_data WHERE tax_year BETWEEN ? AND ? {$salaryDateCondition} AND te_amount > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, tax_year");
-    $stmt->execute($salaryParams);
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $pn = $row['provision_number'];
-        $year = (int)$row['tax_year'];
-        $te = (float)$row['te'];
-        $pKey = 'Salary-' . $pn;
-        if (!isset($provisionData[$pKey])) $provisionData[$pKey] = [];
-        $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
-        $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
-    }
-    $salaryUnclassifiedParams = [$from_year, $to_year];
-    $salaryUnclassifiedDateCondition = reportImportDateCondition($salaryDate, $report_filters, $salaryUnclassifiedParams);
-    $stmt = $pdo->prepare("SELECT tax_year, SUM(te_amount) as te FROM import_salary_tax_data WHERE tax_year BETWEEN ? AND ? {$salaryUnclassifiedDateCondition} AND te_amount > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY tax_year");
-    $stmt->execute($salaryUnclassifiedParams);
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $year = (int)$row['tax_year'];
-        $te = (float)$row['te'];
-        $pKey = 'Salary-Unclassified';
-        if (!isset($provisionData[$pKey])) $provisionData[$pKey] = [];
-        $provisionData[$pKey][$year] = ($provisionData[$pKey][$year] ?? 0) + $te;
-        $yearTotals[$year] = ($yearTotals[$year] ?? 0) + $te;
-    }
-    addTypeData($taxTypes, 'Salary', 'Salary Tax', 'fa-wallet', $provisionData, $yearTotals);
 
     // ----- 4. Domestic VAT -----
     $provisionData = []; $yearTotals = [];
@@ -191,7 +164,7 @@ try {
     $vatDate = reportBatchDateExpression('import_vat_data', 'batch_id', 'import_date');
     $vatParams = [$from_year, $to_year];
     $vatDateCondition = reportImportDateCondition($vatDate, $report_filters, $vatParams);
-    $stmt = $pdo->prepare("SELECT provision_number, YEAR(filing_period) as yr, SUM(expert_te) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? {$vatDateCondition} AND expert_te > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, yr");
+    $stmt = $pdo->prepare("SELECT provision_number, YEAR(filing_period) as yr, SUM(COALESCE(system_te, expert_te, 0)) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? {$vatDateCondition} AND COALESCE(system_te, expert_te, 0) > 0 AND provision_number IS NOT NULL AND provision_number != '' GROUP BY provision_number, yr");
     $stmt->execute($vatParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $pn = $row['provision_number'];
@@ -204,7 +177,7 @@ try {
     }
     $vatUnclassifiedParams = [$from_year, $to_year];
     $vatUnclassifiedDateCondition = reportImportDateCondition($vatDate, $report_filters, $vatUnclassifiedParams);
-    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(expert_te) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? {$vatUnclassifiedDateCondition} AND expert_te > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY yr");
+    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(COALESCE(system_te, expert_te, 0)) as te FROM import_vat_data WHERE YEAR(filing_period) BETWEEN ? AND ? {$vatUnclassifiedDateCondition} AND COALESCE(system_te, expert_te, 0) > 0 AND (provision_number IS NULL OR provision_number = '') GROUP BY yr");
     $stmt->execute($vatUnclassifiedParams);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $year = (int)$row['yr'];

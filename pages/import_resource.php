@@ -28,6 +28,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $imported = 0; $skipped = 0;
         $error_log = [];
 
+        // Detect template type
+        $normalizeHeader = function($value) {
+            return strtolower(preg_replace('/[^a-z0-9]/i', '', (string)$value));
+        };
+        $headerQ = $normalizeHeader($sheet->getCell("Q1")->getCalculatedValue() ?? '');
+        $isNewTemplate = ($headerQ === 'usercomment');
+
         // Pre-load resource type dictionary for Smart Mapping
         $resource_types = $pdo->query("SELECT item_no, item_name FROM bm_natural_resource WHERE active = 1")->fetchAll();
         $rt_by_no = [];
@@ -39,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
             $hasData = false;
-            foreach (range('A', 'F') as $col) {
+            foreach (range('A', $isNewTemplate ? 'Q' : 'F') as $col) {
                 $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
                 if ($cellValue !== '') {
                     $hasData = true;
@@ -63,18 +70,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 return (float)str_replace(',', '', (string)($v ?? '0'));
             };
 
-            $license_date_val = $sheet->getCell("B" . $row)->getCalculatedValue();
-            $license_date = null;
-            if (is_numeric($license_date_val)) {
-                try { $license_date = Date::excelToDateTimeObject($license_date_val)->format("Y-m-d"); } catch (Exception $e) {}
-            } elseif (!empty($license_date_val)) {
-                try { $license_date = (new DateTime((string)$license_date_val))->format("Y-m-d"); } catch (Exception $e) {}
-            }
+            $yn = function($col) use ($sheet, $row) {
+                $v = strtolower(trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? '')));
+                return in_array($v, ['yes', 'y', '1', 'true']) ? 1 : 0;
+            };
 
-            $tax_year = (int)$sheet->getCell("F" . $row)->getCalculatedValue();
+            $dateVal = function($col) use ($sheet, $row) {
+                $v = $sheet->getCell($col . $row)->getCalculatedValue();
+                if (!$v) return null;
+                if (is_numeric($v)) {
+                    try { return Date::excelToDateTimeObject($v)->format("Y-m-d"); } catch (Exception $e) { return null; }
+                }
+                try { return (new DateTime((string)$v))->format("Y-m-d"); } catch (Exception $e) { return null; }
+            };
+
+            $license_date_val = $isNewTemplate ? $sheet->getCell("B" . $row)->getCalculatedValue() : $sheet->getCell("B" . $row)->getCalculatedValue();
+            $license_date = $dateVal("B");
+
+            $tax_year = $isNewTemplate ? (int)$sheet->getCell("D" . $row)->getCalculatedValue() : (int)$sheet->getCell("F" . $row)->getCalculatedValue();
             if ($tax_year <= 0) {
                 $skipped++;
-                $error_log[] = "Row $row: Missing or invalid Year_data";
+                $error_log[] = "Row $row: Missing or invalid Year";
                 continue;
             }
 
@@ -97,25 +113,52 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             }
             $resource_type = $resolved_type ?: $raw_type;
 
-            $actual_rate_val = $num("D");
-            $fee_collected_val = $num("E");
+            if ($isNewTemplate) {
+                $bench_rate = $num("F");
+                $contracted_rate = $num("G");
+                $sale_qty = $num("H");
+                $fee_collected_val = $num("I");
+                $receipt_date = $dateVal("E");
 
-            if ($actual_rate_val <= 0) {
-                $error_log[] = "Row $row: Non-positive Actual Rate ($actual_rate_val)";
+                $data = [
+                    "batch_id"      => $batch_id,
+                    "tax_year"      => $tax_year,
+                    "receipt_date"  => $receipt_date,
+                    "tin"           => $tin,
+                    "license_date"  => $license_date,
+                    "resource_type" => $resource_type,
+                    "actual_rate"   => $bench_rate,
+                    "contracted_rate" => $contracted_rate,
+                    "sale_quantity" => $sale_qty,
+                    "fee_collected" => $fee_collected_val,
+                    "paid_currency" => trim($sheet->getCell("J" . $row)->getCalculatedValue() ?? ''),
+                    "exchange_rate" => $num("K") ?: null,
+                    "use_user_fallback" => $yn("L"),
+                    "user_benchmark_rate" => $num("M") ?: null,
+                    "user_benchmark_fee"  => $num("N") ?: null,
+                    "user_te"       => $num("O") ?: null,
+                    "user_fallback_reason" => trim($sheet->getCell("P" . $row)->getCalculatedValue() ?? ''),
+                    "user_comment"  => trim($sheet->getCell("Q" . $row)->getCalculatedValue() ?? ''),
+                ];
+            } else {
+                $actual_rate_val = $num("D");
+                $fee_collected_val = $num("E");
+                if ($actual_rate_val <= 0) {
+                    $error_log[] = "Row $row: Non-positive Actual Rate ($actual_rate_val)";
+                }
+                if ($fee_collected_val < 0) {
+                    $error_log[] = "Row $row: Negative Fee Collected ($fee_collected_val)";
+                }
+                $data = [
+                    "batch_id"      => $batch_id,
+                    "tax_year"      => $tax_year,
+                    "tin"           => $tin,
+                    "license_date"  => $license_date,
+                    "resource_type" => $resource_type,
+                    "actual_rate"   => $actual_rate_val,
+                    "fee_collected" => $fee_collected_val,
+                ];
             }
-            if ($fee_collected_val < 0) {
-                $error_log[] = "Row $row: Negative Fee Collected ($fee_collected_val)";
-            }
-
-            $data = [
-                "batch_id"      => $batch_id,
-                "tax_year"      => $tax_year,
-                "tin"           => $tin,
-                "license_date"  => $license_date,
-                "resource_type" => $resource_type,
-                "actual_rate"   => $actual_rate_val,
-                "fee_collected" => $fee_collected_val
-            ];
 
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
@@ -127,7 +170,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
             $message .= "Skipped $skipped rows.<br>";
             $message .= "<a href='view_resource.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
-            $message .= "<a href='te_resource.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
+            $message .= "<a href='te_nontax.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
         } else {
             $message = "<strong>No Resource Fee records imported.</strong><br>The uploaded workbook appears to contain only headers or no complete data rows.";
             $msg_type = "warning";
@@ -187,7 +230,7 @@ require_once __DIR__ . "/../includes/header.php";
             <label class="form-label fw-bold">Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
             <div class="form-text mt-2 small">
-                <a href="<?= BASE_URL ?>/docs/Resource%20fee_Template.xlsx" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Template</a>
+                <a href="generate_resource_fee_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Resource Fee Template (v1.0)</a>
             </div>
           </div>
           <div class="d-grid mt-4">
@@ -247,7 +290,7 @@ require_once __DIR__ . "/../includes/header.php";
                 <td><span class="badge bg-warning text-dark rounded-pill px-3"><?= $r["rows"] ?></span></td>
                 <td>
                   <a href="view_resource.php?batch=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
-                  <a href="te_resource.php?batch=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
+                  <a href="te_nontax.php?batch=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-success" title="Calculate"><i class="fas fa-calculator"></i></a>
                   <?php if($has_log): ?>
                     <a href="download_log.php?log_id=<?= urlencode($r["batch_id"]) ?>" class="btn btn-sm btn-outline-danger" title="Download Log"><i class="fas fa-file-alt"></i></a>
                   <?php endif; ?>

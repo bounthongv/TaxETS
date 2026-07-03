@@ -279,7 +279,7 @@ function resetFilters() {
 
 document.getElementById('runBtn')?.addEventListener('click', function() {
     this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
-    this.disabled = true;
+    // Do NOT disable — disabled buttons block form submission
 });
 </script>
 <style>

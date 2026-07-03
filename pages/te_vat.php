@@ -133,7 +133,7 @@ require_once __DIR__ . "/../includes/header.php";
         <div class="p-5 text-center text-muted">
             <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
             <h5>No VAT Data Found</h5>
-            <p>Import data from the <a href="import_vat.php">Data Requirement &gt; VAT</a> page first.</p>
+            <p>Import data from the <a href="import_domestic_vat.php">Data Requirement &gt; VAT</a> page first.</p>
         </div>
         <?php else: ?>
         <table class="table table-hover mb-0">

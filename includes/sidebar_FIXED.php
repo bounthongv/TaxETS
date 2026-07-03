@@ -177,11 +177,11 @@
             </li>
             <li class="<?= $cur == 'import_cit.php' || $cur == 'view_companies.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_cit.php">Profit Tax</a></li>
             <li class="<?= $cur == 'import_individual.php' || $cur == 'view_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_individual.php">Individual Tax</a></li>
-            <li class="<?= $cur == 'import_salary.php' || $cur == 'view_salary.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a></li>
-            <li class="<?= $cur == 'import_vat.php' || $cur == 'view_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_vat.php">Domestic VAT</a></li>
+            <!-- <li class="<?= $cur == 'import_salary.php' || $cur == 'view_salary.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_salary.php">Salary Tax</a></li> -->
+            <li class="<?= $cur == 'import_domestic_vat.php' || $cur == 'view_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_domestic_vat.php">Domestic VAT</a></li>
             <li class="<?= $cur == 'import_sez_dev.php' || $cur == 'view_sez_dev.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_dev.php">For SEZ Developers</a></li>
             <li class="<?= $cur == 'import_sez_inv.php' || $cur == 'view_sez_inv.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_sez_inv.php">For SEZ Investors</a></li>
-            <li class="<?= $cur == 'import_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land_concession.php">Non-Tax: Land concession</a></li>
+            <li class="<?= $cur == 'import_land_concession.php' || $cur == 'repo_land_concession.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_land_concession.php">Non-Tax: Land concession</a></li>
             <li class="<?= $cur == 'import_resource.php' || $cur == 'view_resource.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_resource.php">Non-Tax: Resource fee</a></li>
             <li class="<?= $cur == 'import_royalty.php' || $cur == 'view_royalty.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/import_royalty.php">Non-Tax: Royalty fee</a></li>
             <li class="<?= $cur == 'batches.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/batches.php"><i class="fas fa-layer-group me-2"></i>Batch Management</a></li>
@@ -227,7 +227,7 @@
       <ul class="collapse list-unstyled <?= $is_calc ? 'show' : '' ?>" id="calculationSub">
         <li class="<?= $cur == 'calculator.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/calculator.php">Profit Tax TE</a></li>
         <li class="<?= $cur == 'te_individual.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_individual.php">Individual Tax TE</a></li>
-        <li class="<?= $cur == 'te_salary_tax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_salary_tax.php">Salary Tax TE</a></li>
+        <!-- <li class="<?= $cur == 'te_salary_tax.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_salary_tax.php">Salary Tax TE</a></li> -->
         <li class="<?= $cur == 'te_vat.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/te_vat.php">Domestic VAT TE</a></li>
         <li class="<?= $is_asy_calc ? 'active' : '' ?>">
           <a href="#asyCalcSub" data-bs-toggle="collapse" class="dropdown-toggle" aria-expanded="<?= $is_asy_calc ? 'true' : 'false' ?>">Data from ASYCUDA</a>
@@ -275,7 +275,7 @@
             <li class="<?= $cur == 'report_total_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_total_provision.php"><i class="fas fa-layer-group me-1 text-warning"></i> <strong>Total TE by Provision</strong></a></li>
             <li class="<?= $cur == 'report_provisions.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_provisions.php">Profit Tax TE</a></li>
             <li class="<?= $cur == 'report_individual_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_individual_provision.php">Individual Income Tax TE</a></li>
-            <li class="<?= $cur == 'report_salary_tax_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_salary_tax_provision.php">Salary Tax TE</a></li>
+            <!-- <li class="<?= $cur == 'report_salary_tax_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_salary_tax_provision.php">Salary Tax TE</a></li> -->
             <li class="<?= $cur == 'report_vat_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_vat_provision.php">Domestic VAT TE</a></li>
             <li class="<?= $cur == 'report_sez_dev_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_sez_dev_provision.php">SEZ Developer TE</a></li>
             <li class="<?= $cur == 'report_sez_inv_provision.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/report_sez_inv_provision.php">SEZ Investor TE</a></li>

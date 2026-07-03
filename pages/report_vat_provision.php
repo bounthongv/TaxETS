@@ -47,9 +47,9 @@ $matrix = []; $other_te = []; $grand_total_te = [];
 
 try {
     $params = [$from_year, $to_year];
-    $stmt = $pdo->prepare("SELECT provision_number, YEAR(filing_period) as yr, SUM(expert_te) as te
+    $stmt = $pdo->prepare("SELECT provision_number, YEAR(filing_period) as yr, SUM(COALESCE(system_te, expert_te, 0)) as te
                            FROM import_vat_data
-                           WHERE YEAR(filing_period) BETWEEN ? AND ? AND expert_te > 0
+                           WHERE YEAR(filing_period) BETWEEN ? AND ? AND COALESCE(system_te, expert_te, 0) > 0
                              AND provision_number IS NOT NULL AND provision_number != ''
                              " . reportImportDateCondition(reportBatchDateExpression("import_vat_data", "batch_id", "import_date"), $report_filters, $params) . "
                            GROUP BY provision_number, yr");
@@ -59,9 +59,9 @@ try {
     }
 
     $params = [$from_year, $to_year];
-    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(expert_te) as te
+    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(COALESCE(system_te, expert_te, 0)) as te
                            FROM import_vat_data
-                           WHERE YEAR(filing_period) BETWEEN ? AND ? AND expert_te > 0
+                           WHERE YEAR(filing_period) BETWEEN ? AND ? AND COALESCE(system_te, expert_te, 0) > 0
                              AND (provision_number IS NULL OR provision_number = '')
                              " . reportImportDateCondition(reportBatchDateExpression("import_vat_data", "batch_id", "import_date"), $report_filters, $params) . "
                            GROUP BY yr");
@@ -71,9 +71,9 @@ try {
     }
 
     $params = [$from_year, $to_year];
-    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(expert_te) as te
+    $stmt = $pdo->prepare("SELECT YEAR(filing_period) as yr, SUM(COALESCE(system_te, expert_te, 0)) as te
                            FROM import_vat_data
-                           WHERE YEAR(filing_period) BETWEEN ? AND ? AND expert_te > 0
+                           WHERE YEAR(filing_period) BETWEEN ? AND ? AND COALESCE(system_te, expert_te, 0) > 0
                            " . reportImportDateCondition(reportBatchDateExpression("import_vat_data", "batch_id", "import_date"), $report_filters, $params) . "
                            GROUP BY yr");
     $stmt->execute($params);

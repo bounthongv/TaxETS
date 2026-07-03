@@ -6,6 +6,10 @@ require_once __DIR__ . "/../vendor/autoload.php";
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $pdo = getDbConnection();
 $message = "";
 $msg_type = "success";
@@ -27,6 +31,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $batch_id = "SEZINV_BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
+
+        $normalizeHeader = function($value) {
+            return strtolower(preg_replace('/[^a-z0-9]+/i', '', trim((string)($value ?? ''))));
+        };
+        $headerB = $normalizeHeader($sheet->getCell("B1")->getCalculatedValue());
+        $headerC = $normalizeHeader($sheet->getCell("C1")->getCalculatedValue());
+        $headerD = $normalizeHeader($sheet->getCell("D1")->getCalculatedValue());
+        $isLegacyTemplate = (
+            $headerB === 'amountconstructionroadelectricitywater' &&
+            $headerC === 'amountconstructionotherinfrastructure' &&
+            $headerD === 'yeardata'
+        );
+        $isNewTemplate = ($isLegacyTemplate === false && $normalizeHeader($sheet->getCell("T1")->getCalculatedValue() ?? '') === 'usercomment');
+        $isOld6Col = ($isLegacyTemplate === false && $isNewTemplate === false);
 
         // --- Pre-load Dictionary for Smart Mapping ---
         $prov_rows = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces")->fetchAll();
@@ -61,9 +79,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $dist_by_province[$r['pro_id']][] = ['id' => $r['dis_id'], 'name' => strtoupper(trim($r['dis_name']))];
         }
 
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+        $highestRow = $sheet->getHighestRow();
+
+        for ($row = 2; $row <= $highestRow; $row++) {
             $hasData = false;
-            foreach (range('A', 'G') as $col) {
+            foreach (range('A', $isNewTemplate ? 'T' : ($isLegacyTemplate ? 'D' : 'G')) as $col) {
                 $cellValue = trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? ''));
                 if ($cellValue !== '') {
                     $hasData = true;
@@ -74,7 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 continue;
             }
 
-            $tin = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? "");
+            $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? "");
             if (empty($tin)) {
                 $skipped++;
                 $error_log[] = "Row $row: Missing TIN";
@@ -87,7 +107,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 return (float)str_replace(',', '', (string)($v ?? '0'));
             };
 
-            $license_date_val = $sheet->getCell("C" . $row)->getCalculatedValue();
+            $yn = function($col) use ($sheet, $row) {
+                $v = strtolower(trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? '')));
+                return in_array($v, ['yes', 'y', '1', 'true']) ? 1 : 0;
+            };
+
+            $tax_year = $isLegacyTemplate
+                ? (int)$sheet->getCell("D" . $row)->getCalculatedValue()
+                : (int)$sheet->getCell("A" . $row)->getCalculatedValue();
+            if ($tax_year <= 0) {
+                $skipped++;
+                $error_log[] = "Row $row: Missing or invalid Tax Year";
+                continue;
+            }
+
+            // For new template, check if this row is an Investor record
+            if ($isNewTemplate) {
+                $isInv = $yn("J");
+                if (!$isInv) {
+                    $skipped++;
+                    continue; // Skip non-investor rows
+                }
+            }
+
+            // License Date
+            $license_date_val = $isLegacyTemplate ? null : $sheet->getCell("D" . $row)->getCalculatedValue();
             $license_date = null;
             if (is_numeric($license_date_val)) {
                 try { $license_date = Date::excelToDateTimeObject($license_date_val)->format("Y-m-d"); } catch (Exception $e) {}
@@ -95,23 +139,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 try { $license_date = (new DateTime((string)$license_date_val))->format("Y-m-d"); } catch (Exception $e) {}
             }
 
-            $tax_year = (int)$sheet->getCell("B" . $row)->getCalculatedValue();
-            if ($tax_year <= 0) {
-                $skipped++;
-                $error_log[] = "Row $row: Missing or invalid Tax Year";
-                continue;
+            // Province & District resolution (same logic for all template types)
+            $raw_prov = '';
+            $raw_dist = '';
+            if ($isLegacyTemplate) {
+                $raw_prov = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? '');
+            } elseif ($isNewTemplate) {
+                $raw_prov = trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
+                $raw_dist = trim($sheet->getCell("F" . $row)->getCalculatedValue() ?? '');
+            } else {
+                $raw_prov = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
+                $raw_dist = trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
             }
 
-            $raw_prov = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
-            $raw_dist = trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
-            if (preg_match('/^([0-9A-Za-z]+)\s*\|/', $raw_prov, $m)) {
-                $raw_prov = $m[1];
-            }
-            if (preg_match('/^([0-9A-Za-z]+)\s*\|/', $raw_dist, $m)) {
-                $raw_dist = $m[1];
-            }
+            if (preg_match('/^([0-9A-Za-z]+)\s*\|/', $raw_prov, $m)) { $raw_prov = $m[1]; }
+            if (preg_match('/^([0-9A-Za-z]+)\s*\|/', $raw_dist, $m)) { $raw_dist = $m[1]; }
 
-            // Province Resolution
+            // Province Resolution (same as before)
             $upper_prov = strtoupper($raw_prov);
             $prov_match = $prov_code_map[$upper_prov] ?? ($prov_map[$upper_prov] ?? null);
             if (!$prov_match && isset($prov_aliases[$upper_prov])) {
@@ -134,7 +178,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $error_log[] = "Row $row: Unknown Province '$raw_prov'";
             }
 
-            // District Resolution
+            // District Resolution (same as before)
             $dis_id = null;
             $official_district = $raw_dist;
             $upper_raw_dist = strtoupper($raw_dist);
@@ -167,19 +211,63 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $official_district = $pdo->query("SELECT district_name FROM districts WHERE district_code = " . $pdo->quote($dis_id))->fetchColumn();
             }
 
-            $data = [
-                "batch_id"             => $batch_id,
-                "tax_year"             => $tax_year,
-                "tin"                  => $tin,
-                "license_date"         => $license_date,
-                "pro_id"               => $pro_id,
-                "province"             => $official_province,
-                "dis_id"               => $dis_id,
-                "district"             => $official_district ?: $raw_dist,
-                "type"                 => 'Investor',
-                "amount_utility_usage" => $num("F"),
-                "amount_infra_dev"     => $num("G")
-            ];
+            // Build data array based on template type
+            if ($isNewTemplate) {
+                $data = [
+                    "batch_id"           => $batch_id,
+                    "tax_year"           => $tax_year,
+                    "tin"                => $tin,
+                    "company_name"       => trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? ''),
+                    "license_date"       => $license_date,
+                    "pro_id"             => $pro_id,
+                    "province"           => $official_province,
+                    "dis_id"             => $dis_id,
+                    "district"           => $official_district ?: $raw_dist,
+                    "village"            => trim($sheet->getCell("G" . $row)->getCalculatedValue() ?? ''),
+                    "sez_name"           => trim($sheet->getCell("H" . $row)->getCalculatedValue() ?? ''),
+                    "sez_developer"      => $yn("I"),
+                    "sez_investor"       => $yn("J"),
+                    "sector"             => trim($sheet->getCell("K" . $row)->getCalculatedValue() ?? ''),
+                    "amount_infra_basic" => $num("L"),
+                    "amount_infra_other" => $num("M"),
+                    "amount_utility_usage" => $num("N"),
+                    "amount_infra_dev"   => $num("O"),
+                    "use_user_fallback"  => $yn("P"),
+                    "user_benchmark_rate" => $num("Q") ?: null,
+                    "user_te"            => $num("R") ?: null,
+                    "user_fallback_reason" => trim($sheet->getCell("S" . $row)->getCalculatedValue() ?? ''),
+                    "user_comment"       => trim($sheet->getCell("T" . $row)->getCalculatedValue() ?? ''),
+                    "type"               => 'Investor',
+                ];
+            } elseif ($isLegacyTemplate) {
+                $data = [
+                    "batch_id"           => $batch_id,
+                    "tax_year"           => $tax_year,
+                    "tin"                => $tin,
+                    "license_date"       => $license_date,
+                    "pro_id"             => $pro_id,
+                    "province"           => $official_province,
+                    "dis_id"             => $dis_id,
+                    "district"           => $official_district ?: $raw_dist,
+                    "type"               => 'Developer',
+                    "amount_infra_basic" => $num("B"),
+                    "amount_infra_other" => $num("C")
+                ];
+            } else { // Old 6-col template
+                $data = [
+                    "batch_id"           => $batch_id,
+                    "tax_year"           => $tax_year,
+                    "tin"                => $tin,
+                    "license_date"       => $license_date,
+                    "pro_id"             => $pro_id,
+                    "province"           => $official_province,
+                    "dis_id"             => $dis_id,
+                    "district"           => $official_district ?: $raw_dist,
+                    "type"               => 'Developer',
+                    "amount_infra_basic" => $num("F"),
+                    "amount_infra_other" => $num("G")
+                ];
+            }
 
             $cols = implode(", ", array_keys($data));
             $ph = implode(", ", array_fill(0, count($data), "?"));
@@ -189,11 +277,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
         if ($imported > 0) {
             $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
-            $message .= "Skipped $skipped rows.<br>";
+            if ($skipped > 0) $message .= "Skipped $skipped rows (non-investor records or missing critical fields).<br>";
             $message .= "<a href='view_sez_inv.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-primary mt-2 me-2'><i class='fas fa-eye me-1'></i> View Imported Data</a>";
             $message .= "<a href='te_sez_inv.php?batch=" . urlencode($batch_id) . "' class='btn btn-sm btn-outline-success mt-2 me-2'><i class='fas fa-calculator me-1'></i> Open TE Calculation</a>";
         } else {
-            $message = "<strong>No SEZ Investor records imported.</strong><br>The uploaded workbook appears to contain only headers or no complete data rows.";
+            $message = "<strong>No SEZ Investor records imported.</strong><br>";
+            if ($isNewTemplate) $message .= "Only records with SEZ Investor = Yes (column J) are imported. ";
+            $message .= "The uploaded file may contain only headers or no developer records.";
             $msg_type = "warning";
         }
 
@@ -215,25 +305,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
 // Fetch recent batches
 $recent = $pdo->query("SELECT batch_id, MAX(tax_year) as tax_year, COUNT(*) as `rows`, MAX(id) as lid FROM import_sez_data WHERE type='Investor' GROUP BY batch_id ORDER BY lid DESC LIMIT 15")->fetchAll();
-// Check for existing logs
-$log_check = [];
-if (!empty($recent)) {
-    $stmt = $pdo->prepare("SELECT DISTINCT batch_id FROM import_sez_data WHERE type='Investor'");
-    $stmt->execute();
-    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $bid) {
-        if (file_exists(__DIR__ . "/../data/logs/$bid.log")) {
-            $log_check[$bid] = true;
-        }
-    }
-}
 
 require_once __DIR__ . "/../includes/header.php";
 ?>
 
 <div class="row mb-3">
   <div class="col-12">
-    <h2><i class="fas fa-file-import me-2 text-success"></i> SEZ Investor Data Import</h2>
-    <p class="text-muted">Upload the SEZ Investor Excel template to import utility usage and infrastructure development data.</p>
+    <h2><i class="fas fa-file-import me-2"></i> SEZ Investor Data Import</h2>
+    <p class="text-muted">Upload the SEZ Investor Excel template to import utility/infrastructure usage data.</p>
   </div>
 </div>
 
@@ -246,19 +325,19 @@ require_once __DIR__ . "/../includes/header.php";
 
 <div class="row">
   <div class="col-md-5">
-    <div class="card shadow-sm border-0 border-top border-4 border-success">
-      <div class="card-header bg-white text-dark fw-bold"><i class="fas fa-upload me-2 text-success"></i> Upload Excel File</div>
+    <div class="card shadow-sm border-0 border-top border-4 border-info">
+      <div class="card-header bg-white text-dark fw-bold"><i class="fas fa-upload me-2 text-info"></i> Upload Excel File</div>
       <div class="card-body">
         <form method="POST" enctype="multipart/form-data" id="uploadForm">
           <div class="mb-3">
             <label class="form-label fw-bold">Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
             <div class="form-text mt-2 small">
-                <a href="<?= BASE_URL ?>/docs/For%20SEZ%20Investors_Template.xlsx" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download Template</a>
+                <a href="generate_sez_vat_template.php" class="text-decoration-none"><i class="fas fa-download me-1"></i> Download SEZ VAT Template (v1.0)</a>
             </div>
           </div>
           <div class="d-grid mt-4">
-            <button type="submit" class="btn btn-success text-white btn-lg shadow-sm" id="importBtn"><i class="fas fa-file-import me-2"></i> Import Batch</button>
+            <button type="submit" class="btn btn-info text-white btn-lg shadow-sm" id="importBtn"><i class="fas fa-file-import me-2"></i> Import Batch</button>
           </div>
         </form>
       </div>
@@ -268,15 +347,31 @@ require_once __DIR__ . "/../includes/header.php";
       <div class="card-header bg-secondary text-white fw-bold"><i class="fas fa-table me-2"></i> Excel Column Mapping</div>
       <div class="card-body p-0">
         <table class="table table-sm table-bordered mb-0 small">
-          <thead class="table-light"><tr><th>Col</th><th>Field</th></tr></thead>
+          <thead class="table-light"><tr><th>Col</th><th>Field</th><th>Type</th></tr></thead>
           <tbody>
-            <tr><td>A</td><td>TIN</td></tr>
-            <tr><td>B</td><td>Tax Year</td></tr>
-            <tr><td>C</td><td>Permission / License Date</td></tr>
-            <tr><td>D</td><td>Province ID</td></tr>
-            <tr><td>E</td><td>District ID</td></tr>
-            <tr><td>F</td><td>Electricity and Water used in Production</td></tr>
-            <tr><td>G</td><td>Construction/Development of Infrastructures</td></tr>
+            <tr class="table-secondary"><td colspan="3" class="fw-bold small">PRIMARY REQUIRED</td></tr>
+            <tr><td>A</td><td>Tax Year</td><td>Number</td></tr>
+            <tr><td>B</td><td>TIN</td><td>Text</td></tr>
+            <tr><td>C</td><td>Company Name</td><td>Text</td></tr>
+            <tr><td>D</td><td>License Date</td><td>Date</td></tr>
+            <tr><td>E</td><td>Province</td><td>Dropdown</td></tr>
+            <tr><td>F</td><td>District</td><td>Dropdown</td></tr>
+            <tr class="table-info"><td colspan="3" class="fw-bold small">PRIMARY CONDITIONAL — Infrastructure Amounts</td></tr>
+            <tr><td>G</td><td>Village</td><td>Text</td></tr>
+            <tr><td>H</td><td>SEZ name</td><td>Text</td></tr>
+            <tr><td>J</td><td>SEZ Investor</td><td>Yes/No</td></tr>
+            <tr><td>J</td><td>SEZ Investor</td><td>Yes/No</td></tr>
+            <tr><td>K</td><td>Sector</td><td>Text</td></tr>
+            <tr><td>L</td><td>Basic Infrastructure LAK</td><td>Numeric</td></tr>
+            <tr><td>M</td><td>Other Infrastructure LAK</td><td>Numeric</td></tr>
+            <tr><td>N</td><td>Utility Usage LAK</td><td>Numeric</td></tr>
+            <tr><td>O</td><td>Support Infrastructure LAK</td><td>Numeric</td></tr>
+            <tr class="table-warning"><td colspan="3" class="fw-bold small">USER FALLBACK</td></tr>
+            <tr><td>P</td><td>Use User Fallback?</td><td>Yes/No</td></tr>
+            <tr><td>Q</td><td>User Benchmark Rate</td><td>Numeric</td></tr>
+            <tr><td>R</td><td>User TE</td><td>Numeric</td></tr>
+            <tr><td>S</td><td>User Fallback Reason</td><td>Text</td></tr>
+            <tr><td>T</td><td>User Comment</td><td>Text</td></tr>
           </tbody>
         </table>
       </div>
@@ -287,7 +382,7 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="card shadow-sm">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-bold"><i class="fas fa-history me-2 text-secondary"></i> Recent Batches & Manual Entries</span>
-        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
+        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
             <i class="fas fa-plus me-1"></i> Add Manual Entry
         </button>
       </div>
@@ -304,11 +399,12 @@ require_once __DIR__ . "/../includes/header.php";
               <?php foreach ($recent as $r): ?>
               <?php
                 $is_manual = (strpos($r["batch_id"], 'MANUAL') !== false);
-                $has_log = isset($log_check[$r["batch_id"]]);
+                $log_file = __DIR__ . "/../data/logs/" . $r["batch_id"] . ".log";
+                $has_log = file_exists($log_file);
               ?>
               <tr class="<?= $is_manual ? 'table-info' : '' ?>">
                 <td>
-                    <small class="font-monospace text-success"><?= htmlspecialchars($r["batch_id"]) ?></small>
+                    <small class="font-monospace text-info"><?= htmlspecialchars($r["batch_id"]) ?></small>
                     <?php if($is_manual): ?><span class="badge bg-info ms-1">MANUAL</span><?php endif; ?>
                 </td>
                 <td><?= $r["tax_year"] ?></td>
@@ -356,7 +452,7 @@ require_once __DIR__ . "/../includes/header.php";
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-success text-white" onclick="goToManualEntry()">Manage Records</button>
+        <button type="button" class="btn btn-info text-white" onclick="goToManualEntry()">Manage Records</button>
       </div>
     </div>
   </div>

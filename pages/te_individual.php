@@ -90,7 +90,7 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm bg-success text-white text-center py-3">
             <div class="fs-5 fw-bold"><?= number_format($total_engine_te) ?></div>
-            <div class="small opacity-75"><?= $is_admin ? "Engine TE" : "TE" ?></div>
+            <div class="small opacity-75"><?= $is_admin ? "PIT TE" : "TE" ?></div>
         </div>
     </div>
     <?php if ($is_admin): ?>
@@ -118,7 +118,7 @@ require_once __DIR__ . "/../includes/header.php";
                 <tr>
                     <th>Batch</th>
                     <th>Records</th>
-                    <th class="text-end"><?= $is_admin ? "Engine TE" : "TE" ?></th>
+                    <th class="text-end"><?= $is_admin ? "PIT TE" : "TE" ?></th>
                     <?php if ($is_admin): ?><th class="text-end">Expert TE</th><?php endif; ?>
                     <th>Actions</th>
                 </tr>
@@ -216,7 +216,7 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm bg-success text-white text-center py-3">
             <div class="fs-5 fw-bold"><?= number_format($total_engine_te) ?></div>
-            <div class="small opacity-75"><?= $is_admin ? "Engine TE" : "TE" ?></div>
+            <div class="small opacity-75"><?= $is_admin ? "PIT TE" : "TE" ?></div>
         </div>
     </div>
     <?php if ($is_admin): ?>
@@ -265,7 +265,7 @@ require_once __DIR__ . "/../includes/header.php";
                     <th class="text-end">Total Income</th>
                     <th class="text-center">SS Member</th>
                     <th class="text-end table-info">BM TE</th>
-                    <th class="text-end table-success"><?= $is_admin ? "Engine TE" : "TE" ?></th>
+                    <th class="text-end table-success"><?= $is_admin ? "PIT TE" : "TE" ?></th>
                     <?php if ($is_admin): ?>
                     <th class="text-end table-warning">Expert TE</th>
                     <th class="text-center" style="width:40px">Δ</th>
@@ -288,7 +288,7 @@ require_once __DIR__ . "/../includes/header.php";
                     <td><?= $i + 1 ?></td>
                     <td><?= $r["tax_year"] ?></td>
                     <td class="font-monospace fw-bold"><?= htmlspecialchars($r["ptin"]) ?></td>
-                    <td><?= htmlspecialchars($r["employee_name"]) ?></td>
+                    <td><?= htmlspecialchars($r["individual_name"] ?? $r["employee_name"] ?? '') ?></td>
                     <td><?= htmlspecialchars($r["filing_date"] ?? '') ?></td>
                     <td class="text-end"><?= number_format($sum_income, 0) ?></td>
                     <td class="text-center">
@@ -304,7 +304,7 @@ require_once __DIR__ . "/../includes/header.php";
                         <?php if ($expert_te > 0): ?>
                             <?php $diff = $engine_te - $expert_te; ?>
                             <?php if (abs($diff) > 0.01): ?>
-                                <span class="badge bg-<?= abs($diff) > 1000000 ? 'danger' : 'warning' ?> text-dark" title="Engine TE - Expert TE">
+                                <span class="badge bg-<?= abs($diff) > 1000000 ? 'danger' : 'warning' ?> text-dark" title="PIT TE - Expert TE">
                                     <?= $diff > 0 ? '+' : '' ?><?= number_format($diff, 0) ?>
                                 </span>
                             <?php else: ?>
@@ -384,7 +384,6 @@ function resetFilters() {
 
 document.getElementById('runBtn')?.addEventListener('click', function() {
     this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
-    this.disabled = true;
 });
 </script>
 <style>

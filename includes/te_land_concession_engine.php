@@ -80,7 +80,8 @@ class TELandConcessionEngine {
         }
 
         $benchmarkValue = $area * $benchmarkRate;
-        $teAmount = $provisionName === "" ? 0.0 : max(0, $benchmarkValue - $paid);
+        // TE = max(0, benchmark - paid) even without provision (fallback logic)
+        $teAmount = max(0, $benchmarkValue - $paid);
 
         return [
             "benchmark_value_usd" => round($benchmarkValue, 4),

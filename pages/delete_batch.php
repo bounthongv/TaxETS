@@ -16,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($batch_id)) {
         case "vat":
             $stmt = $pdo->prepare("DELETE FROM import_vat_data WHERE batch_id = ?");
             $stmt->execute([$batch_id]);
-            $redirect = "import_vat.php";
+            $redirect = "import_domestic_vat.php";
             break;
         case "salary":
             $stmt = $pdo->prepare("DELETE FROM import_salary_tax_data WHERE batch_id = ?");

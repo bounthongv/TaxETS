@@ -14,7 +14,7 @@ $batchTypes = [
     "cit" => ["label" => "Profit Tax", "icon" => "fa-building", "view" => "view_companies.php", "calc" => "calculator.php", "import" => "import_cit.php", "delete" => "cit"],
     "pit" => ["label" => "Individual Tax", "icon" => "fa-user", "view" => "view_individual.php", "calc" => "te_individual.php", "import" => "import_individual.php", "delete" => "pit"],
     "salary" => ["label" => "Salary Tax", "icon" => "fa-wallet", "view" => "view_salary.php", "calc" => "te_salary_tax.php", "import" => "import_salary.php", "delete" => "salary"],
-    "vat" => ["label" => "Domestic VAT", "icon" => "fa-receipt", "view" => "view_vat.php", "calc" => "te_vat.php", "import" => "import_vat.php", "delete" => "vat"],
+    "vat" => ["label" => "Domestic VAT", "icon" => "fa-receipt", "view" => "view_vat.php", "calc" => "te_vat.php", "import" => "import_domestic_vat.php", "delete" => "vat"],
     "sez_dev" => ["label" => "SEZ Developer", "icon" => "fa-hard-hat", "view" => "view_sez_dev.php", "calc" => "te_sez_dev.php", "import" => "import_sez_dev.php", "delete" => "sez_dev"],
     "sez_inv" => ["label" => "SEZ Investor", "icon" => "fa-helmet-safety", "view" => "view_sez_inv.php", "calc" => "te_sez_inv.php", "import" => "import_sez_inv.php", "delete" => "sez_inv"],
     "resource" => ["label" => "Resource Fee", "icon" => "fa-oil-can", "view" => "view_resource.php", "calc" => "te_resource.php", "import" => "import_resource.php", "delete" => "resource"],

@@ -1,0 +1,6 @@
+-- Land Concession Import Data Table (repo_land_concession_data)
+-- Expert-confirmed Land Concession-template-apis v1.0: 19 columns A-S
+-- New columns added for the 19-col expert template:
+-- description, paid_currency, exchange_rate, use_user_fallback,
+-- user_benchmark_rate, user_benchmark_value, user_nontax_te,
+-- user_fallback_reason, user_comment

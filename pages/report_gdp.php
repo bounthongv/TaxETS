@@ -13,8 +13,8 @@ $report_filters = reportFilterInput();
 $gdp_data = [];
 $gdp_stmt = $pdo->query("SELECT gdp_year, gdp_value FROM repo_gdp_revenue ORDER BY gdp_year");
 while ($row = $gdp_stmt->fetch(PDO::FETCH_ASSOC)) {
-    // gdp_value stored in billions; multiply by 1,000,000,000 for kip
-    $gdp_data[(int)$row['gdp_year']] = (float)$row['gdp_value'] * 1_000_000_000;
+    // gdp_value stored in trillions; multiply by 1,000,000,000,000 for kip
+    $gdp_data[(int)$row['gdp_year']] = (float)$row['gdp_value'] * 1_000_000_000_000;
 }
 $gdp_years = array_keys($gdp_data);
 
@@ -23,7 +23,6 @@ $gdp_years = array_keys($gdp_data);
 // ===================================================================
 $profit_data = [];
 $pit_data = [];
-$salary_data = [];
 $vat_domestic_data = [];
 $customs_data = [];
 $excise_data = [];
@@ -38,7 +37,6 @@ try {
     $reportData = reportTaxTypeData($pdo, $report_filters);
     $profit_data = $reportData["profit"];
     $pit_data = $reportData["pit"];
-    $salary_data = $reportData["salary"];
     $vat_domestic_data = $reportData["vat_domestic"];
     $customs_data = $reportData["customs"];
     $excise_data = $reportData["excise"];
@@ -55,7 +53,7 @@ try {
 // Determine available year range (intersection of GDP years and data years)
 $data_years = array_unique(array_merge(
     $gdp_years,
-    array_keys($profit_data), array_keys($pit_data), array_keys($salary_data),
+    array_keys($profit_data), array_keys($pit_data),
     array_keys($vat_domestic_data), array_keys($customs_data), array_keys($excise_data),
     array_keys($vat_import_data), array_keys($sez_dev_data), array_keys($sez_inv_data),
     array_keys($resource_data), array_keys($royalty_data), array_keys($land_concession_data)
@@ -91,7 +89,6 @@ if (empty($all_years)) { $all_years = $display_years; }
 $tax_types = [
     'Corporate Income Tax (Profit Tax)' => $profit_data,
     'Individual Income Tax (PIT)'       => $pit_data,
-    'Salary Tax'                        => $salary_data,
     'Domestic Value Added Tax (VAT)'    => $vat_domestic_data,
     'Customs Duty (Import)'             => $customs_data,
     'Excise Tax (Import)'               => $excise_data,
@@ -168,7 +165,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
     $sheet->getStyle('A' . $rowIdx)->getFont()->setBold(true);
     $c = 'B';
     foreach ($display_years as $year) {
-        $sheet->setCellValue($c . $rowIdx, $gdp_data[$year] > 0 ? number_format($gdp_data[$year] / 1_000_000_000, 2) : '');
+        $sheet->setCellValue($c . $rowIdx, $gdp_data[$year] > 0 ? number_format($gdp_data[$year] / 1_000_000_000_000, 2) : '');
         $sheet->getStyle($c . $rowIdx)->getNumberFormat()->setFormatCode('#,##0.00');
         $c++;
     }
@@ -252,7 +249,7 @@ if (isset($_GET['export']) && $_GET['export'] === '1') {
       <table class="table table-bordered table-hover mb-0 align-middle">
         <thead class="table-light small text-uppercase fw-bold">
           <tr>
-            <th class="ps-4" style="width: 300px;">Tax Type Category</th>
+            <th class="ps-4" style="width: 420px;">Tax Type Category</th>
             <?php foreach ($display_years as $year): ?>
               <th class="text-end pe-4"><?= htmlspecialchars($year) ?> (%)</th>
             <?php endforeach; ?>

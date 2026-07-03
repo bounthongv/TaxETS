@@ -181,8 +181,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $dist_by_province[$r['pro_id']][] = ['dis_id' => $r['dis_id'], 'name' => strtoupper(trim($r['dis_name']))];
         }
 
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-            $tin = trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? '');
+        // Detect template format: expert template has headers on row 4, data from row 5
+        $firstDataRow = 2;
+        if (trim($sheet->getCell("A4")->getCalculatedValue() ?? '') === 'Tax Year') {
+            $firstDataRow = 5; // Expert-standard template
+        }
+
+        for ($row = $firstDataRow; $row <= $sheet->getHighestRow(); $row++) {
+            $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? '');
             if (empty($tin)) { $skipped++; continue; }
 
             $flag = function($col) use ($sheet, $row) {
@@ -199,9 +205,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 return $v;
             };
 
-            $act1 = $flag("AC"); $act2 = $flag("AD"); $act3 = $flag("AE");
-            $act4 = $flag("AF"); $act5 = $flag("AG"); $act6 = $flag("AH");
-            $act7 = $flag("AI"); $act8 = $flag("AJ"); $act9 = $flag("AK");
+            $act1 = $flag("AB"); $act2 = $flag("AC"); $act3 = $flag("AD");
+            $act4 = $flag("AE"); $act5 = $flag("AF"); $act6 = $flag("AG");
+            $act7 = $flag("AH"); $act8 = $flag("AI"); $act9 = $flag("AJ");
             $flag_act_1_4_7_8_9 = ($act1 || $act4 || $act7 || $act8 || $act9) ? 1 : 0;
             $flag_act_2_3_5_6   = ($act2 || $act3 || $act5 || $act6) ? 1 : 0;
 
@@ -215,7 +221,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $raw_prov = $stripped_prov;
             }
             $raw_dist = trim($sheet->getCell("F" . $row)->getCalculatedValue() ?? '');
-            $raw_sect = trim($sheet->getCell("J" . $row)->getCalculatedValue() ?? '');
+            $raw_sect = trim($sheet->getCell("H" . $row)->getCalculatedValue() ?? '');
+            // Parse Investment Zone (column I): "Zone 1", "Zone 2", "Zone 3" or empty
+            $zoneVal = trim($sheet->getCell("I" . $row)->getCalculatedValue() ?? '');
+            $zone_1 = ($zoneVal === 'Zone 1') ? 1 : 0;
+            $zone_2 = ($zoneVal === 'Zone 2') ? 1 : 0;
+            $zone_3 = ($zoneVal === 'Zone 3') ? 1 : 0;
 
             $upper_prov = strtoupper($raw_prov);
             $prov_match = $prov_map[$upper_prov] ?? null;
@@ -296,45 +307,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             }
 
             $data = [
-                "import_batch_id"            => $batch_id,
-                "tax_year"                   => $excel_year > 0 ? $excel_year : $tax_year,
-                "tin"                        => $tin,
-                "company_name"               => $sheet->getCell("C" . $row)->getCalculatedValue(),
-                "pro_id"                     => $pro_id,
-                "province"                   => $official_province,
-                "dis_id"                     => $dis_id,
-                "district"                   => $official_district ?: $raw_dist,
-                "sector_id"                  => $sector_id,
-                "sector"                     => $raw_sect,
-                "zone_1"                     => $flag("G"),
-                "zone_2"                     => $flag("H"),
-                "zone_3"                     => $flag("I"),
-                "revenue"                    => (float)$sheet->getCell("K" . $row)->getCalculatedValue(),
-                "expense"                    => (float)$sheet->getCell("L" . $row)->getCalculatedValue(),
-                "net_profit"                 => (float)$sheet->getCell("M" . $row)->getCalculatedValue(),
-                "re_invested_profit"         => (float)$sheet->getCell("N" . $row)->getCalculatedValue(),
-                "pt_paid"                    => (float)$sheet->getCell("O" . $row)->getCalculatedValue(),
-                "tax_holiday_years"          => (int)$sheet->getCell("S" . $row)->getCalculatedValue(),
-                "investment_license_date"    => $dateVal("B"),
-                "flag_hr_dev"                => $flag("U"),
-                "flag_eco_friendly"          => $flag("V"),
-                "flag_sez_developer"         => $flag("W"),
-                "flag_sez_investor"          => $flag("X"),
-                "flag_act_production_services" => $flag("Y"),
-                "flag_public_benefit"        => $flag("Z"),
-                "flag_compliant_rental"      => $flag("AA"),
-                "flag_real_estate_transfer"  => $flag("AB"),
+                "import_batch_id"             => $batch_id,
+                "tax_year"                    => $excel_year > 0 ? $excel_year : $tax_year,
+                "tin"                         => $tin,
+                "company_name"                => $sheet->getCell("C" . $row)->getCalculatedValue(),
+                "pro_id"                      => $pro_id,
+                "province"                    => $official_province,
+                "dis_id"                      => $dis_id,
+                "district"                    => $official_district ?: $raw_dist,
+                "sector_id"                   => $sector_id,
+                "sector"                      => $raw_sect,
+                "zone_1"                      => $zone_1,
+                "zone_2"                      => $zone_2,
+                "zone_3"                      => $zone_3,
+                "revenue"                     => (float)$sheet->getCell("J" . $row)->getCalculatedValue(),
+                "expense"                     => (float)$sheet->getCell("K" . $row)->getCalculatedValue(),
+                "net_profit"                  => (float)$sheet->getCell("L" . $row)->getCalculatedValue(),
+                "pt_paid"                     => (float)$sheet->getCell("M" . $row)->getCalculatedValue(),
+                "loss_carryforward"           => (float)$sheet->getCell("N" . $row)->getCalculatedValue(),
+                "re_invested_profit"          => (float)$sheet->getCell("O" . $row)->getCalculatedValue(),
+                "reinvest_date"               => $dateVal("P"),
+                "registration_date"           => $dateVal("Q"),
+                "tax_holiday_years"           => (int)$sheet->getCell("R" . $row)->getCalculatedValue(),
+                "investment_license_date"     => $dateVal("D"),
+                "flag_hr_dev"                 => $flag("T"),
+                "flag_eco_friendly"           => $flag("U"),
+                "flag_sez_developer"          => $flag("V"),
+                "flag_sez_investor"           => $flag("W"),
+                "flag_act_production_services" => $flag("X"),
+                "flag_public_benefit"         => $flag("Y"),
+                "flag_compliant_rental"       => $flag("Z"),
+                "flag_real_estate_transfer"   => $flag("AA"),
                 "flag_act_1_4_7_8_9"         => $flag_act_1_4_7_8_9,
                 "flag_act_2_3_5_6"           => $flag_act_2_3_5_6,
-                "is_vat_holder"              => $flag("AL"),
-                "reinvest_date"              => $dateVal("AM"),
-                "reinvest_amount"            => (float)$sheet->getCell("AN" . $row)->getCalculatedValue(),
-                "total_assets"               => (float)$sheet->getCell("AO" . $row)->getCalculatedValue() * 1000000000,
-                "annual_turnover"            => (float)$sheet->getCell("AP" . $row)->getCalculatedValue() * 1000000000,
-                "staff_count"                => (int)$sheet->getCell("AQ" . $row)->getCalculatedValue(),
-                "stock_exchange_listing_date" => $dateVal("AR"),
-                "registration_date"          => $dateVal("T"),
-                "expert_te"                  => (float)($sheet->getCell("BO" . $row)->getCalculatedValue() ?? 0),
+                "is_vat_holder"               => $flag("S"),
+                "reinvest_amount"             => (float)$sheet->getCell("O" . $row)->getCalculatedValue(), // Same as re-invested profit
+                "total_assets"                => (float)$sheet->getCell("AK" . $row)->getCalculatedValue() * 1000000000,
+                "annual_turnover"             => (float)$sheet->getCell("AL" . $row)->getCalculatedValue() * 1000000000,
+                "staff_count"                 => (int)$sheet->getCell("AM" . $row)->getCalculatedValue(),
+                "stock_exchange_listing_date" => $dateVal("AN"),
+                // Expert TE: not in the standard import template; remains NULL
             ];
 
             $cols = implode(", ", array_keys($data));
@@ -518,6 +530,5 @@ function goToManualEntry() {
     const pad = n => String(n).padStart(2, '0');
     const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     window.location.href = `view_companies.php?batch=MANUAL_ENTRY_CIT_${year}_${stamp}&auto_add=1&year=${year}`;
-}
-</script>
+}</script>
 <?php require_once __DIR__ . "/../includes/footer.php"; ?>

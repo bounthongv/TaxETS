@@ -1,4 +1,11 @@
 <?php
+/**
+ * ⚠ DEPRECATED — This generator uses an OLD template structure.
+ * Use generate_pit_template.php instead (expert-confirmed PIT template v1.0).
+ * 
+ * Kept for reference only. See docs/PIT-template-apis-standard.xlsx
+ * and pages/generate_pit_template.php for the current version.
+ */
 require_once __DIR__ . "/../config.php";
 require_once __DIR__ . "/../includes/db.php";
 require_once __DIR__ . "/../vendor/autoload.php";

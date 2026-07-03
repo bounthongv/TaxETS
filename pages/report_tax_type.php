@@ -15,7 +15,6 @@ $report_filters = reportFilterInput();
 // Initialize data containers
 $profit_data = [];
 $pit_data = [];
-$salary_data = [];
 $vat_domestic_data = [];
 $customs_data = [];
 $excise_data = [];
@@ -31,7 +30,6 @@ try {
     $reportData = reportTaxTypeData($pdo, $report_filters);
     $profit_data = $reportData["profit"];
     $pit_data = $reportData["pit"];
-    $salary_data = $reportData["salary"];
     $vat_domestic_data = $reportData["vat_domestic"];
     $customs_data = $reportData["customs"];
     $excise_data = $reportData["excise"];
@@ -46,7 +44,6 @@ try {
     $raw_years = array_unique(array_merge(
         array_keys($profit_data),
         array_keys($pit_data),
-        array_keys($salary_data),
         array_keys($vat_domestic_data),
         array_keys($customs_data),
         array_keys($excise_data),
@@ -97,7 +94,6 @@ if (empty($all_years)) { $all_years = $annual_years; }
 $tax_types = [
     'Corporate Income Tax (Profit Tax)' => $profit_data,
     'Individual Income Tax (PIT)'       => $pit_data,
-    'Salary Tax'                        => $salary_data,
     'Domestic Value Added Tax (VAT)'    => $vat_domestic_data,
     'Customs Duty (Import)'             => $customs_data,
     'Excise Tax (Import)'               => $excise_data,
@@ -223,7 +219,7 @@ if ($is_export) {
       <table class="table table-bordered table-hover mb-0 align-middle">
         <thead class="table-light small text-uppercase fw-bold">
           <tr>
-            <th class="ps-4" style="width: 300px;">Tax Type Category</th>
+            <th class="ps-4" style="width: 420px;">Tax Type Category</th>
             <?php foreach ($annual_years as $year): ?>
               <th class="text-end pe-4"><?= htmlspecialchars($year) ?></th>
             <?php endforeach; ?>

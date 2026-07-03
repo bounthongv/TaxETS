@@ -75,7 +75,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $colFeePaid = $colFor(["ConcessionFeePaid", "FeePaid", "Concession Fee Paid", "Concession Fee Paid (USD)"], "J");
         $colBenchmarkValue = $colFor(["Benchmark Value", "Benchmark Value (USD)"], "");
         $colNonTaxTe = $colFor(["Non-Tax TE", "Non-Tax TE (USD)", "NonTaxTE"], "");
-        $colProvisionName = $colFor(["ProvisionName", "Provision Name"], "M");
+        $colProvisionName = $colFor(["ProvisionName", "Provision Name", "Description"], "");
+        $colPaidCurrency = $colFor(["Paid Currency", "Currency"], "L");
+        $colExchangeRate = $colFor(["Exchange Rate"], "M");
+        $colUserFallback = $colFor(["Use User Fallback?"], "N");
+        $colUserBenchRate = $colFor(["User Benchmark Rate"], "O");
+        $colUserBenchValue = $colFor(["User Benchmark Value"], "P");
+        $colUserNontaxTe = $colFor(["User Non-Tax TE", "Non-Tax TE", "Non-Tax TE (USD)", "NonTaxTE"], "Q");
+        $colFallbackReason = $colFor(["User Fallback Reason"], "R");
+        $colUserComment = $colFor(["User Comment"], "S");
 
         for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
             $hasData = false;
@@ -174,6 +182,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $provisionName = trim($matches[1]);
             }
 
+            $yn = function($col) use ($sheet, $row) {
+                $v = strtolower(trim((string)($sheet->getCell($col . $row)->getCalculatedValue() ?? '')));
+                return in_array($v, ['yes', 'y', '1', 'true']) ? 1 : 0;
+            };
+
             $data = [
                 "import_batch_id" => $batch_id,
                 "tax_year" => $rowTaxYear,
@@ -191,6 +204,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 "benchmark_value_usd" => $numberVal($colBenchmarkValue),
                 "non_tax_te_usd" => $numberVal($colNonTaxTe),
                 "provision_name" => $provisionName,
+                "description" => $cellVal($colProvisionName),
+                "paid_currency" => trim($sheet->getCell($colPaidCurrency . $row)->getCalculatedValue() ?? ''),
+                "exchange_rate" => $numberVal($colExchangeRate) ?: null,
+                "use_user_fallback" => $yn($colUserFallback),
+                "user_benchmark_rate" => $numberVal($colUserBenchRate) ?: null,
+                "user_benchmark_value" => $numberVal($colUserBenchValue) ?: null,
+                "user_nontax_te" => $numberVal($colUserNontaxTe) ?: null,
+                "user_fallback_reason" => trim($sheet->getCell($colFallbackReason . $row)->getCalculatedValue() ?? ''),
+                "user_comment" => trim($sheet->getCell($colUserComment . $row)->getCalculatedValue() ?? ''),
             ];
 
             $cols = implode(", ", array_keys($data));
