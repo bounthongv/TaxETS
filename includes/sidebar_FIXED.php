@@ -18,6 +18,7 @@
       <ul class="collapse list-unstyled <?= $is_system ? 'show' : '' ?>" id="systemSub">
         <li class="<?= $cur == 'system_users.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/system_users.php">User Management</a></li>
         <li class="<?= $cur == 'system_roles.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/system_roles.php">Role Management</a></li>
+        <li class="<?= $cur == 'change_password.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/change_password.php"><i class="fas fa-key me-1 text-warning"></i> Change Password</a></li>
         <li class="<?= $cur == 'system_history.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/system_history.php">Operation Logs</a></li>
         <li class="<?= $cur == 'system_mgmt.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/system_mgmt.php">System Management</a></li>
         <li class="<?= $cur == 'system_ip.php' ? 'active' : '' ?>"><a href="<?= BASE_URL ?>/pages/system_ip.php">IP access Management</a></li>
