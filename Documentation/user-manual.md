@@ -44,7 +44,7 @@
 
 | Email | Password | ສິດ |
 | --- | --- | --- |
-| trainer@example.com | trainer123 | ADMIN (ສໍາລັບຜູ້ທົດສອບ ແລະ ຝຶກອົບຮົມ) |
+| apis@example.com | trainer123 | ADMIN (ສໍາລັບຜູ້ທົດສອບ ແລະ ຝຶກອົບຮົມ) |
 
 Screenshot placeholder:
 
