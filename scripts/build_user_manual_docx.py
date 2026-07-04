@@ -153,6 +153,24 @@ add_table(
 
 add_placeholder('Screenshot: Login page')
 
+# Add Change Password section
+p = doc.add_paragraph()
+run = p.add_run('ການປ່ຽນລະຫັດຜ່ານດ້ວຍຕົນເອງ')
+run.bold = True
+run.font.size = Pt(10)
+
+doc.add_paragraph('ຫຼັງຈາກເຂົ້າລະບົບ, ຜູ້ໃຊ້ສາມາດປ່ຽນລະຫັດຜ່ານຂອງຕົນເອງໄດ້ທີ່:')
+add_code('System > Change Password')
+steps = [
+    'ໃສ່ລະຫັດປະຈຸບັນ (Current Password).',
+    'ໃສ່ລະຫັດໃໝ່ (New Password) ຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ.',
+    'ຢືນຢັນລະຫັດໃໝ່ (Confirm New Password).',
+    'ກົດ Change Password.',
+]
+for i, step in enumerate(steps, 1):
+    doc.add_paragraph(f'{i}. {step}')
+add_placeholder('Screenshot: Change Password form')
+
 # Section 5
 add_heading('5. ໂຄງສ້າງເມນູຫຼັກ', 1)
 doc.add_paragraph('ຫຼັງຈາກ Login, ຜູ້ໃຊ້ຈະເຫັນ Sidebar ດ້ານຊ້າຍ.')

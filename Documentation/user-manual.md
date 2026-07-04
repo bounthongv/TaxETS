@@ -46,6 +46,25 @@
 | --- | --- | --- |
 | apis@example.com | trainer123 | ADMIN (ສໍາລັບຜູ້ທົດສອບ ແລະ ຝຶກອົບຮົມ) |
 
+### ການປ່ຽນລະຫັດຜ່ານດ້ວຍຕົນເອງ
+
+ຫຼັງຈາກເຂົ້າລະບົບ, ຜູ້ໃຊ້ສາມາດປ່ຽນລະຫັດຜ່ານຂອງຕົນເອງໄດ້ທີ່:
+
+```text
+System > Change Password
+```
+
+1. ໃສ່ລະຫັດປະຈຸບັນ (Current Password).
+2. ໃສ່ລະຫັດໃໝ່ (New Password) ຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ.
+3. ຢືນຢັນລະຫັດໃໝ່ (Confirm New Password).
+4. ກົດ Change Password.
+
+Screenshot placeholder:
+
+```text
+[Insert screenshot: Change Password form]
+```
+
 Screenshot placeholder:
 
 ```text
