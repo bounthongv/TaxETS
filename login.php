@@ -101,10 +101,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <i class="fas fa-sign-in-alt me-2"></i> Login
             </button>
         </form>
-        
-        <div class="text-center mt-4 text-muted small">
-            Default: admin@example.com / admin123
-        </div>
     </div>
 </body>
 </html>
