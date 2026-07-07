@@ -53,7 +53,7 @@ if (!defined('BASE_URL')) {
 }
 
 // ---- System constants ----
-defined('APP_NAME') || define('APP_NAME', 'Tax-ETS (Phase 1)');
+defined('APP_NAME') || define('APP_NAME', 'Tax-ETS');
 
 // Global Evaluation Date for Calculations
 // "TODAY" or a specific "YYYY-MM-DD" date string
