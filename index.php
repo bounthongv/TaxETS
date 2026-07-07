@@ -28,7 +28,7 @@ try {
 <div class="row mb-4">
   <div class="col-12">
     <h2 class="mb-1">Overview TaxETS Dashboard</h2>
-    <p class="text-muted">Welcome to the Tax Expenditure Estimation System (Phase 1: Corporate Income Tax)</p>
+    <p class="text-muted">Welcome to the Tax Expenditure Tracking System</p>
   </div>
 </div>
 

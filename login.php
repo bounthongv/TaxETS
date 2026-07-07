@@ -78,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <div class="text-center mb-4">
             <i class="fas fa-calculator fa-3x text-primary"></i>
             <h3 class="mt-3"><?= APP_NAME ?></h3>
-            <p class="text-muted">Tax Expenditure Estimation System</p>
+            <p class="text-muted">Tax Expenditure Tracking System</p>
         </div>
         
         <?php if ($error): ?>
