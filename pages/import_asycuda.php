@@ -275,7 +275,7 @@ require_once __DIR__ . "/../includes/header.php";
         </div>
 
         <div class="card mt-3 shadow-sm">
-        <div class="card-header bg-secondary text-white fw-bold"><i class="fas fa-table me-2"></i> Excel Column Mapping</div>
+        <div class="card-header bg-primary text-white fw-bold"><i class="fas fa-table me-2"></i> Excel Column Mapping</div>
         <div class="card-body p-0">
           <table class="table table-sm table-bordered mb-0 small">
             <thead class="table-light"><tr><th>Excel Col</th><th>System Field</th></tr></thead>
@@ -301,10 +301,7 @@ require_once __DIR__ . "/../includes/header.php";
   <div class="col-md-7">
     <div class="card shadow-sm">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-bold"><i class="fas fa-history me-2 text-secondary"></i> Recent ASYCUDA Batches & Manual Entries</span>
-        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
-            <i class="fas fa-plus me-1"></i> Add Manual Entry
-        </button>
+        <span class="fw-bold"><i class="fas fa-history me-2 text-secondary"></i> Recent ASYCUDA Batches</span>
       </div>
       <div class="card-body p-0">
         <?php if (empty($recent)): ?>
