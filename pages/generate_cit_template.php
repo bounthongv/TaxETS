@@ -12,11 +12,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
-$pdo = new PDO(
-    "mysql:host=localhost;port=3306;dbname=tax_ets;charset=utf8mb4",
-    "root", "",
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-);
+$pdo = getDbConnection();
 
 // ============================================================
 // FETCH LOOKUP DATA FROM DATABASE
