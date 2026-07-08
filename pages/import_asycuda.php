@@ -262,26 +262,25 @@ require_once __DIR__ . "/../includes/header.php";
     <div class="card shadow-sm border-0 border-top border-4 border-primary">
       <div class="card-header bg-white text-dark fw-bold"><i class="fas fa-upload me-2 text-primary"></i> Upload ASYCUDA File</div>
       <div class="card-body">
-        <form method="POST" enctype="multipart/form-data" id="uploadForm">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Excel File (.xlsx)</label>
-            <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
-            <div class="form-text mt-2"><i class="fas fa-info-circle me-1"></i> Standard ASYCUDA export format (columns A&ndash;AR).</div>
-          </div>
-          <div class="d-grid mt-4">
-            <button type="submit" class="btn btn-primary btn-lg shadow-sm" id="importBtn"><i class="fas fa-file-import me-2"></i> Import ASYCUDA Data</button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <form method="POST" enctype="multipart/form-data" id="uploadForm" class="flex-grow-1">
+            <div class="input-group">
+              <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
+              <button type="submit" class="btn btn-primary" id="importBtn"><i class="fas fa-file-import me-2"></i> Import</button>
+            </div>
+            <div class="form-text mt-1"><i class="fas fa-info-circle me-1"></i> Standard ASYCUDA export format (columns A&ndash;AR).</div>
+          </form>
+          <a href="<?= BASE_URL ?>/docs/Import_data_from_ASYCUDA.xlsx" class="btn btn-outline-secondary flex-shrink-0" download><i class="fas fa-download me-1"></i> Download Template</a>
+        </div>
+        </div>
 
-    <div class="card mt-3 shadow-sm">
-      <div class="card-header bg-secondary text-white fw-bold"><i class="fas fa-table me-2"></i> Excel Column Mapping</div>
-      <div class="card-body p-0">
-        <table class="table table-sm table-bordered mb-0 small">
-          <thead class="table-light"><tr><th>Excel Col</th><th>System Field</th></tr></thead>
-          <tbody>
-            <tr><td>A</td><td>Province</td></tr>
+        <div class="card mt-3 shadow-sm">
+        <div class="card-header bg-secondary text-white fw-bold"><i class="fas fa-table me-2"></i> Excel Column Mapping</div>
+        <div class="card-body p-0">
+          <table class="table table-sm table-bordered mb-0 small">
+            <thead class="table-light"><tr><th>Excel Col</th><th>System Field</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td>Province</td></tr>
             <tr><td>B</td><td>TIN</td></tr>
             <tr><td>G &amp; H</td><td>Regime Code (e.g., 4000-480)</td></tr>
             <tr><td>J &amp; K</td><td>Declaration No / Date</td></tr>
