@@ -25,13 +25,12 @@ if ($confirmed) {
     $engines = [
         ["name" => "Corporate Income Tax (Profit Tax)",  "batch_col" => "import_batch_id", "table" => "companies",               "engine" => "TEEngine",             "method" => "calculateBatch"],
         ["name" => "Individual Income Tax (PIT)",         "batch_col" => "batch_id",        "table" => "import_pit_data",         "engine" => "TEPitEngine",          "method" => "calculateBatch"],
-        ["name" => "Salary Tax",                          "batch_col" => "batch_id",        "table" => "import_salary_tax_data",  "engine" => "TESalaryTaxEngine",    "method" => "calculateBatch"],
         ["name" => "Domestic VAT",                         "batch_col" => "batch_id",        "table" => "import_vat_data",         "engine" => "TEVatEngine",          "method" => "calculateBatch"],
         ["name" => "SEZ Developer",                       "batch_col" => "batch_id",        "table" => "import_sez_data",         "engine" => "TESEZEngine",          "method" => "calculateBatch", "extra" => "Developer"],
         ["name" => "SEZ Investor",                        "batch_col" => "batch_id",        "table" => "import_sez_data",         "engine" => "TESEZEngine",          "method" => "calculateBatch", "extra" => "Investor"],
         ["name" => "Resource Fee",                         "batch_col" => "batch_id",        "table" => "import_resource_data",    "engine" => "TEResourceEngine",     "method" => "calculateBatch"],
         ["name" => "Royalty Fee",                          "batch_col" => "batch_id",        "table" => "import_royalty_data",     "engine" => "TERoyaltyEngine",      "method" => "calculateBatch"],
-        ["name" => "Land Concession",                      "batch_col" => "import_batch_id", "table" => "companies",               "engine" => "TELandConcessionEngine","method" => "calculateBatch"],
+        ["name" => "Land Concession",                      "batch_col" => "import_batch_id", "table" => "repo_land_concession_data","engine" => "TELandConcessionEngine","method" => "calculateBatch"],
         ["name" => "ASYCUDA (Customs, Excise, VAT)",       "batch_col" => "import_batch_id", "table" => "asycuda_imports",          "engine" => "TEAsycudaEngine",      "method" => "calculateBatch"],
     ];
 
