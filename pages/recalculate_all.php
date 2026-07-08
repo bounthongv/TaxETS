@@ -81,7 +81,7 @@ if ($confirmed) {
         if (!empty($errors)) {
             $has_errors = true;
         }
-        ob_flush();
+        if (ob_get_level()) ob_flush();
         flush();
     }
 
