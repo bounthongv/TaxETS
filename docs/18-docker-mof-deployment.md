@@ -406,3 +406,78 @@ Docker itself stores the running container and any data the
 container writes outside the volume mounts — but we don't write
 anywhere else, so the only persistent state is in `~/tax-ets-install/`
 and the customer's MySQL server.
+
+---
+
+## 9. Implementation Decisions (for reference at MOF site)
+
+These are the decisions we made during planning. Keep them in mind
+when you're at the MOF site.
+
+### 9.1 Legacy system — do NOT touch
+
+The legacy Tax-ETS is already running at `http://172.16.0.193/`
+via Docker. Do not modify it. Do not stop it. Do not change its port.
+
+### 9.2 New Tax-ETS — use a different port (no sub-path)
+
+The new Tax-ETS will run on **port 5000**, not on a sub-path like
+`/tax-ets`. This avoids touching the legacy system's reverse proxy
+or Apache config.
+
+| System | URL | Port |
+|--------|-----|------|
+| Legacy | `http://172.16.0.193/` | 80 |
+| New Tax-ETS | `http://172.16.0.193:5000/` | **5000** |
+
+Set `WEB_PORT=5000` in the `.env` file before starting the container.
+
+### 9.3 Database — same credentials as dev/Ubuntu
+
+Use the same database credentials as our current setup for consistency:
+
+| Field | Value |
+|-------|-------|
+| DB Host | `localhost` (MySQL on the MOF server itself) |
+| DB Name | `tax_ets` |
+| DB User | `admin` |
+| DB Pass | `Sql_admin@#2024` |
+
+Create the database and user on the MOF server:
+
+```bash
+# Run this on the MOF server before install.sh
+sudo mysql -e "CREATE DATABASE IF NOT EXISTS tax_ets;
+               CREATE USER IF NOT EXISTS 'admin'@'%' IDENTIFIED BY 'Sql_admin@#2024';
+               GRANT ALL PRIVILEGES ON tax_ets.* TO 'admin'@'%';
+               FLUSH PRIVILEGES;"
+```
+
+This matches the credentials in `.env.xampp` and the Ubuntu server's
+`.env`, so the same mysqldump/import commands work everywhere.
+
+### 9.4 Data migration
+
+To migrate existing data from the Ubuntu or local database to the
+MOF server, see section **3.3a** above (dump → scp → import).
+
+### 9.5 Quick reference: install sequence
+
+```bash
+# 1. On MOF server — create database (one-time)
+sudo mysql -e "CREATE DATABASE IF NOT EXISTS tax_ets; GRANT ALL ON tax_ets.* TO 'admin'@'%';"
+
+# 2. Copy bundle and extract
+scp dist/INSTALL-BUNDLE.tar.gz user@172.16.0.193:/tmp/
+ssh user@172.16.0.193
+mkdir -p ~/tax-ets-install && cd ~/tax-ets-install
+tar -xzf /tmp/INSTALL-BUNDLE.tar.gz && cd bundle-contents
+
+# 3. Set port and install
+echo "WEB_PORT=5000" >> .env
+sudo bash install.sh
+# Enter DB credentials when prompted (host=localhost, db=tax_ets, user=admin, pass=Sql_admin@#2024)
+
+# 4. Done
+# Access at: http://172.16.0.193:5000/
+```
