@@ -196,6 +196,55 @@ mysql -h <host> -u <user> -p tax_ets < db/server_auth_schema.sql
 (Or, if MOF IT prefers, hand them the `.sql` files and let them
 load them — it's their server, their call.)
 
+### 3.3a Migrate existing data (optional)
+
+If you already have Tax-ETS data (companies, records, calculations)
+on your current database (Ubuntu or local) and want to move it to
+the MOF MySQL, do this **before** running the installer:
+
+**On your dev machine or current Ubuntu server:**
+
+```bash
+# 1. Dump the full database (exclude user passwords for security)
+mysqldump -h <current-host> -u <user> -p --no-create-info \
+  --ignore-table=tax_ets.users \
+  --ignore-table=tax_ets.user_sessions \
+  --ignore-table=tax_ets.user_history \
+  --ignore-table=tax_ets.role_permissions \
+  tax_ets > /tmp/tax_ets_data.sql
+
+# (Include user table if you want to migrate user accounts too)
+mysqldump -h <current-host> -u <user> -p --no-create-info \
+  --tables tax_ets users --where="email='apis@example.com'" \
+  >> /tmp/tax_ets_data.sql
+
+# 2. Compress
+gzip /tmp/tax_ets_data.sql
+
+# 3. Copy to the MOF server
+scp /tmp/tax_ets_data.sql.gz user@<mof-ip>:/tmp/
+```
+
+**On the MOF server:**
+
+```bash
+# 4. Load the schema first (run the installer step or schema.sql manually)
+# 5. Then load the data
+gunzip -c /tmp/tax_ets_data.sql.gz | mysql -h <mof-mysql-host> -u <mof-user> -p tax_ets
+```
+
+**Important:** The MOF database must have the same schema (tables and columns) 
+as the source. The bundle installer + schema files in `db/` create the correct schema.
+Load the schema first, then the data.
+
+If you only want to migrate specific modules (e.g., only CIT data), 
+you can filter the mysqldump by table:
+```bash
+mysqldump -h <host> -u <user> -p --no-create-info \
+  --tables tax_ets companies te_profit_result profit_provisions \
+  > /tmp/tax_ets_cit.sql
+```
+
 ### 3.4 Run the installer
 
 ```bash
