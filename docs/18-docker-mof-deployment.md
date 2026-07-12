@@ -20,9 +20,83 @@
 
 ## 1. The plan in one sentence
 
-Build a Docker image on your dev machine, save it to a tarball,
-copy the tarball to a USB, run an installer script on the MOF
-server, answer four questions, done.
+Two scenarios — pick the one that fits your access to the MOF server:
+
+| Scenario | Access | Method |
+|----------|--------|--------|
+| **A. On-site (USB)** | You are physically at the ministry | Load from USB stick |
+| **B. Over VPN** | You have SSH access via Fortigate Client | SCP the bundle over VPN |
+
+Both use the same build step: `docker compose build && bash docker/save-images.sh`.
+
+---
+
+## 1A. Deployment over VPN (no USB)
+
+Use this when you can reach the MOF server via SSH through the Fortigate VPN.
+The server has a local IP (e.g., `192.168.x.x`), no public domain, and no outbound internet.
+
+### Steps
+
+**On your dev machine:**
+
+```bash
+# 1. Build the image and create the bundle
+cd D:\Tax-ETS
+docker compose build
+bash docker/save-images.sh
+# → creates dist/INSTALL-BUNDLE.tar.gz
+
+# 2. Copy the bundle to the MOF server over SSH
+scp dist/INSTALL-BUNDLE.tar.gz user@<mof-local-ip>:/tmp/
+
+# 3. SSH into the server
+ssh user@<mof-local-ip>
+```
+
+**On the MOF server:**
+
+```bash
+# 4. Extract the bundle
+mkdir -p ~/tax-ets-install
+cd ~/tax-ets-install
+tar -xzf /tmp/INSTALL-BUNDLE.tar.gz
+cd bundle-contents
+ls   # should show: tax-ets-image.tar  install.sh  docker-compose.yml  .env.example  README-MOF-INSTALL.md
+
+# 5. Get database details from MOF IT (host, port, name, user, password)
+# 6. Run the installer
+sudo bash install.sh
+
+# 7. Verify it's running
+docker ps
+curl -sI http://localhost/login.php   # expect: HTTP/1.1 200 OK
+```
+
+### Updating the app later (VPN)
+
+```bash
+# On your dev machine:
+cd D:\Tax-ETS
+git pull
+docker compose build
+bash docker/save-images.sh
+scp dist/INSTALL-BUNDLE.tar.gz user@<mof-local-ip>:/tmp/
+
+# On the MOF server:
+ssh user@<mof-local-ip>
+cd ~/tax-ets-install/bundle-contents
+cp /tmp/INSTALL-BUNDLE.tar.gz .
+tar -xzf INSTALL-BUNDLE.tar.gz --strip-components=1 bundle-contents/tax-ets-image.tar
+docker load -i tax-ets-image.tar
+docker compose up -d web
+```
+
+The container picks up the new image and restarts. No downtime beyond the restart.
+
+---
+
+## 1B. On-site deployment with USB
 
 ---
 
