@@ -195,6 +195,7 @@ $sheet->getStyle("B5:B1004")->getNumberFormat()->setFormatCode("@");
 $v = new DataValidation();
 $v->setType(DataValidation::TYPE_WHOLE);
 $v->setFormula1("2000");
+$v->setOperator(DataValidation::OPERATOR_GREATERTHANOREQUAL);
 $v->setAllowBlank(true)->setShowInputMessage(true)->setShowErrorMessage(true);
 $sheet->setDataValidation("A5:A1004", $v);
 
@@ -204,6 +205,7 @@ foreach (["J","K","L","M","N","O","AK","AL","AP","AQ","AR"] as $col) {
     $v = new DataValidation();
     $v->setType(DataValidation::TYPE_DECIMAL);
     $v->setFormula1("0");
+    $v->setOperator(DataValidation::OPERATOR_GREATERTHANOREQUAL);
     $v->setAllowBlank(true)->setShowInputMessage(true)->setShowErrorMessage(true);
     $sheet->setDataValidation($col . "5:" . $col . "1004", $v);
 }
@@ -213,6 +215,7 @@ foreach (["R","AM"] as $col) {
     $v = new DataValidation();
     $v->setType(DataValidation::TYPE_WHOLE);
     $v->setFormula1("0");
+    $v->setOperator(DataValidation::OPERATOR_GREATERTHANOREQUAL);
     $v->setAllowBlank(true)->setShowInputMessage(true)->setShowErrorMessage(true);
     $sheet->setDataValidation($col . "5:" . $col . "1004", $v);
 }
