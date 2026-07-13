@@ -313,12 +313,12 @@ $is_admin = ($_SESSION["user_email"] ?? '') === "admin@example.com";
                     <td><?= htmlspecialchars($r["district"] ?? '') ?></td>
                     <td><?= htmlspecialchars($r["sector"]) ?></td>
                     <td><span class="badge bg-<?= $r["is_vat_holder"] ? "success" : "secondary" ?>"><?= $r["is_vat_holder"] ? "YES" : "NO" ?></span></td>
-                    <td class="text-end"><?= number_format($r["staff_count"]) ?></td>
-                    <td class="text-end"><?= number_format($r["revenue"], 0) ?></td>
-                    <td class="text-end"><?= number_format($r["net_profit"], 0) ?></td>
-                    <td class="text-end fw-bold text-info"><?= number_format($r["benchmark_pt"], 0) ?></td>
-                    <td class="text-end"><?= number_format($r["pt_paid"], 0) ?></td>
-                    <td class="text-end fw-bold text-danger"><?= number_format($r["profit_tax_te"], 0) ?></td>
+                    <td class="text-end"><?= number_format((float)($r["staff_count"] ?? 0)) ?></td>
+                    <td class="text-end"><?= number_format((float)($r["revenue"] ?? 0), 0) ?></td>
+                    <td class="text-end"><?= number_format((float)($r["net_profit"] ?? 0), 0) ?></td>
+                    <td class="text-end fw-bold text-info"><?= number_format((float)($r["benchmark_pt"] ?? 0), 0) ?></td>
+                    <td class="text-end"><?= number_format((float)($r["pt_paid"] ?? 0), 0) ?></td>
+                    <td class="text-end fw-bold text-danger"><?= number_format((float)($r["profit_tax_te"] ?? 0), 0) ?></td>
                     <?php if ($is_admin): ?>
                     <td class="text-end fw-bold text-warning"><?= $r["expert_te"] !== null ? number_format($r["expert_te"], 0) : '<span class="text-muted">—</span>' ?></td>
                     <td class="text-center">
