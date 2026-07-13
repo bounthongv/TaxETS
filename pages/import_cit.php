@@ -214,6 +214,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $excel_year = (int)$sheet->getCell("A" . $row)->getCalculatedValue();
             
             $raw_prov = trim($sheet->getCell("E" . $row)->getCalculatedValue() ?? '');
+            // Strip "code | " prefix from dropdown (e.g., "01 | Vientiane Capital" → "Vientiane Capital")
+            $raw_prov = preg_replace('/^\d+\s*\|\s*/', '', $raw_prov);
             // Strip "Province"/"Prefecture" suffix so "Vientiane Capital Province" → "Vientiane Capital"
             // BUT preserve "Vientiane Province" which has distinct meaning from Vientiane Capital
             $stripped_prov = preg_replace('/\s+(Province|Prefecture)\s*$/i', '', $raw_prov);
@@ -221,7 +223,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
                 $raw_prov = $stripped_prov;
             }
             $raw_dist = trim($sheet->getCell("F" . $row)->getCalculatedValue() ?? '');
+            $raw_dist = preg_replace('/^\d+\s*\|\s*/', '', $raw_dist);
             $raw_sect = trim($sheet->getCell("H" . $row)->getCalculatedValue() ?? '');
+            $raw_sect = preg_replace('/^\d+\s*\|\s*/', '', $raw_sect);
             // Parse Investment Zone (column I): "Zone 1", "Zone 2", "Zone 3" or empty
             $zoneVal = trim($sheet->getCell("I" . $row)->getCalculatedValue() ?? '');
             $zone_1 = ($zoneVal === 'Zone 1') ? 1 : 0;
