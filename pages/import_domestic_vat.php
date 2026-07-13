@@ -137,6 +137,8 @@ $parseDate = function ($val) {
 $resolveProvince = function ($raw) use ($prov_map, $prov_aliases, $prov_rows, &$error_log) {
     $raw_prov = trim($raw ?? '');
     if (empty($raw_prov)) return [null, null, null];
+    // Strip "code | " prefix from dropdown (e.g., "01 | Vientiane Capital" → "Vientiane Capital")
+    $raw_prov = preg_replace('/^\d+\s*\|\s*/', '', $raw_prov);
     $stripped = preg_replace('/\s+(Province|Prefecture)\s*$/i', '', $raw_prov);
     if (strtoupper($stripped) !== 'VIENTIANE') $raw_prov = $stripped;
     $upper = strtoupper($raw_prov);
