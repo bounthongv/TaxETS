@@ -170,8 +170,8 @@ require_once __DIR__ . "/../includes/header.php";
         <tr>
           <td><?= $i + 1 ?></td>
           <td><?= $r["tax_year"] ?></td>
-          <td><small class="font-monospace fw-bold"><?= htmlspecialchars($r["ptin"]) ?></small></td>
-          <td><?= htmlspecialchars($r["employee_name"]) ?></td>
+          <td><small class="font-monospace fw-bold"><?= htmlspecialchars($r["ptin"] ?? '') ?></small></td>
+          <td><?= htmlspecialchars($r["employee_name"] ?? '') ?></td>
           <td><?= htmlspecialchars($r["filing_date"] ?? '') ?></td>
           <td class="text-end"><?= number_format($total_income, 0) ?></td>
           <td class="text-center">
