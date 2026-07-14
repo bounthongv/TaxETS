@@ -171,7 +171,7 @@ require_once __DIR__ . "/../includes/header.php";
           <td><?= $i + 1 ?></td>
           <td><?= $r["tax_year"] ?></td>
           <td><small class="font-monospace fw-bold"><?= htmlspecialchars($r["ptin"] ?? '') ?></small></td>
-          <td><?= htmlspecialchars($r["employee_name"] ?? '') ?></td>
+          <td><?= htmlspecialchars($r["individual_name"] ?? '') ?></td>
           <td><?= htmlspecialchars($r["filing_date"] ?? '') ?></td>
           <td class="text-end"><?= number_format($total_income, 0) ?></td>
           <td class="text-center">
@@ -218,8 +218,8 @@ require_once __DIR__ . "/../includes/header.php";
               <input type="text" name="ptin" id="edit_ptin" class="form-control" required>
             </div>
             <div class="col-md-3 mb-3">
-              <label class="form-label fw-bold small">Employee Name</label>
-              <input type="text" name="employee_name" id="edit_employee_name" class="form-control" required>
+              <label class="form-label fw-bold small">Individual Name</label>
+              <input type="text" name="individual_name" id="edit_individual_name" class="form-control" required>
             </div>
             <div class="col-md-3 mb-3">
               <label class="form-label fw-bold small">Filing Date</label>
@@ -301,7 +301,7 @@ function editRecord(id) {
     document.getElementById('edit_id').value = r.id;
     document.getElementById('edit_tax_year').value = r.tax_year || '';
     document.getElementById('edit_ptin').value = r.ptin || '';
-    document.getElementById('edit_employee_name').value = r.employee_name || '';
+    document.getElementById('edit_individual_name').value = r.individual_name || '';
     document.getElementById('edit_filing_date').value = r.filing_date || '';
     
     // Set amount fields
