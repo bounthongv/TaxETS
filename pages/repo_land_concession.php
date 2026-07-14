@@ -124,11 +124,11 @@ require_once __DIR__ . "/../includes/header.php";
         <tbody>
           <?php foreach ($records as $r): ?>
           <tr class="<?= (empty($r['pro_id']) || empty($r['dis_id'])) ? 'table-warning' : '' ?>">
-            <td><small class="font-monospace fw-bold"><?= htmlspecialchars($r["tin"]) ?></small></td>
+            <td><small class="font-monospace fw-bold"><?= htmlspecialchars($r["tin"] ?? '') ?></small></td>
             <td><?= $r["tax_year"] ?></td>
-            <td><?= htmlspecialchars($r["company_name"]) ?></td>
-            <td><?= htmlspecialchars($r["province"]) ?> <?php if(empty($r['pro_id'])): ?>⚠️<?php endif; ?></td>
-            <td><?= htmlspecialchars($r["district"]) ?> <?php if(empty($r['dis_id'])): ?>⚠️<?php endif; ?></td>
+            <td><?= htmlspecialchars($r["company_name"] ?? '') ?></td>
+            <td><?= htmlspecialchars($r["province"] ?? '') ?> <?php if(empty($r['pro_id'])): ?>⚠️<?php endif; ?></td>
+            <td><?= htmlspecialchars($r["district"] ?? '') ?> <?php if(empty($r['dis_id'])): ?>⚠️<?php endif; ?></td>
             <td class="text-end"><?= number_format($r["concession_area_ha"], 2) ?></td>
             <td class="text-end"><?= number_format($r["benchmark_rate_usd"], 2) ?></td>
             <td class="text-end"><?= number_format($r["concession_fee_paid_usd"], 2) ?></td>
