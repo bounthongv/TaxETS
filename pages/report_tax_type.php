@@ -105,6 +105,20 @@ $tax_types = [
     'Land Concession (Non-Tax)'         => $land_concession_data
 ];
 
+// Multi-select tax type filter
+$selected_types = isset($_GET['types']) ? (array)$_GET['types'] : array_keys($tax_types);
+// Always include all types in the variable for chart/total calculation
+// but filter for display
+$display_types = [];
+foreach ($tax_types as $key => $data) {
+    if (in_array($key, $selected_types)) {
+        $display_types[$key] = $data;
+    }
+}
+if (empty($display_types)) {
+    $display_types = $tax_types; // show all if none selected
+}
+
 // Export to Excel
 if ($is_export) {
     require __DIR__ . '/../vendor/autoload.php';
@@ -212,6 +226,37 @@ if ($is_export) {
   </div>
 </div>
 
+<!-- Multi-select Tax Type Filter -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+  <div class="card-body">
+    <form method="GET" class="row align-items-end g-2">
+      <div class="col-12">
+        <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i class="fas fa-check-square me-1"></i> Show Tax Types</label>
+        <div class="d-flex flex-wrap gap-2">
+          <?php foreach (array_keys($tax_types) as $tkey): 
+            $is_checked = in_array($tkey, $selected_types);
+          ?>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" name="types[]" value="<?= htmlspecialchars($tkey) ?>" id="type_<?= md5($tkey) ?>" <?= $is_checked ? 'checked' : '' ?>>
+              <label class="form-check-label small" for="type_<?= md5($tkey) ?>"><?= htmlspecialchars($tkey) ?></label>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <div class="col-12 mt-2">
+        <?php foreach ($_GET as $k => $v): if ($k === 'types') continue; ?>
+          <?php if (is_array($v)): foreach ($v as $vv): ?>
+            <input type="hidden" name="<?= htmlspecialchars($k) ?>[]" value="<?= htmlspecialchars($vv) ?>">
+          <?php endforeach; else: ?>
+            <input type="hidden" name="<?= htmlspecialchars($k) ?>" value="<?= htmlspecialchars($v) ?>">
+          <?php endif; ?>
+        <?php endforeach; ?>
+        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i> Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="reportContent">
 <div class="card shadow-sm mb-4" style="border-radius: 12px;">
   <div class="card-body p-0">
@@ -226,7 +271,7 @@ if ($is_export) {
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($tax_types as $type => $data): ?>
+          <?php foreach ($display_types as $type => $data): ?>
           <tr>
             <td class="ps-4 fw-bold text-dark"><?= htmlspecialchars($type) ?></td>
             <?php foreach ($annual_years as $year): ?>
@@ -304,7 +349,7 @@ var chartData = <?= json_encode(array_map(function($type, $data) use ($annual_ye
         $row[(string)$year] = (float)($data[$year] ?? 0);
     }
     return $row;
-}, array_keys($tax_types), array_values($tax_types))) ?>;
+}, array_keys($display_types), array_values($display_types))) ?>;
 var chartYears = <?= json_encode(array_map('intval', $annual_years)) ?>;
 
 (function() {
