@@ -105,6 +105,29 @@ $tax_types = [
     'Land Concession (Non-Tax)'         => $land_concession_data
 ];
 
+// Multi-select tax type filter
+$selected_types = isset($_GET['types']) ? (array)$_GET['types'] : array_keys($tax_types);
+$display_types = [];
+foreach ($tax_types as $key => $data) {
+    if (in_array($key, $selected_types)) {
+        $display_types[$key] = $data;
+    }
+}
+if (empty($display_types)) {
+    $display_types = $tax_types;
+}
+
+// Build export URL with selected types preserved
+$export_url = "?export=1";
+if (!empty($_GET['from_year'])) $export_url .= "&from_year=" . (int)$_GET['from_year'];
+if (!empty($_GET['to_year'])) $export_url .= "&to_year=" . (int)$_GET['to_year'];
+foreach (['import_from', 'import_to'] as $k) {
+    if (!empty($_GET[$k])) $export_url .= "&" . urlencode($k) . "=" . urlencode($_GET[$k]);
+}
+foreach ($selected_types as $t) {
+    $export_url .= "&types[]=" . urlencode($t);
+}
+
 // Export to Excel
 if ($is_export) {
     require __DIR__ . '/../vendor/autoload.php';
@@ -129,7 +152,7 @@ if ($is_export) {
     $sheet->getStyle('A1:' . $col . '1')->applyFromArray($headerStyle);
 
     $rowIdx = 2;
-    foreach ($tax_types as $type => $data) {
+    foreach ($display_types as $type => $data) {
         $sheet->setCellValue('A' . $rowIdx, $type);
         $sheet->getStyle('A' . $rowIdx)->getFont()->setBold(true);
         $col = 'B';
@@ -147,7 +170,7 @@ if ($is_export) {
     $col = 'B';
     foreach ($annual_years as $year) {
         $total = 0;
-        foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
+        foreach ($display_types as $data) { $total += ($data[$year] ?? 0); }
         $sheet->setCellValue($col . $rowIdx, $total > 0 ? $total : '');
         $sheet->getStyle($col . $rowIdx)->getNumberFormat()->setFormatCode('#,##0');
         $col++;
@@ -175,7 +198,7 @@ if ($is_export) {
       <p class="text-muted">Consolidated summary of tax expenditures across all tax regimes and years.</p>
     </div>
     <div class="d-flex gap-2">
-      <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
+      <a href="<?= htmlspecialchars($export_url) ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
       <button type="button" class="btn btn-danger" id="exportPdfBtn"><i class="fas fa-file-pdf me-1"></i> Export PDF</button>
       <a href="recalculate_all.php" class="btn btn-primary"><i class="fas fa-sync-alt me-1"></i> Update Data</a>
     </div>
@@ -212,6 +235,39 @@ if ($is_export) {
   </div>
 </div>
 
+<!-- Multi-select Tax Type Filter -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+  <div class="card-body py-3">
+    <form method="GET" class="row align-items-center g-2">
+      <div class="col-auto">
+        <label class="form-label small fw-bold text-muted text-uppercase mb-0"><i class="fas fa-check-square me-1"></i> Show Tax Types</label>
+      </div>
+      <div class="col">
+        <div class="d-flex flex-wrap gap-3">
+          <?php foreach (array_keys($tax_types) as $tkey): 
+            $is_checked = in_array($tkey, $selected_types);
+          ?>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="types[]" value="<?= htmlspecialchars($tkey) ?>" id="type_<?= md5($tkey) ?>" <?= $is_checked ? 'checked' : '' ?>>
+              <label class="form-check-label small" for="type_<?= md5($tkey) ?>"><?= htmlspecialchars($tkey) ?></label>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <div class="col-auto">
+        <?php foreach ($_GET as $k => $v): if (in_array($k, ['types', 'export'])) continue; ?>
+          <?php if (is_array($v)): foreach ($v as $vv): ?>
+            <input type="hidden" name="<?= htmlspecialchars($k) ?>[]" value="<?= htmlspecialchars($vv) ?>">
+          <?php endforeach; else: ?>
+            <input type="hidden" name="<?= htmlspecialchars($k) ?>" value="<?= htmlspecialchars($v) ?>">
+          <?php endif; ?>
+        <?php endforeach; ?>
+        <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter me-1"></i> Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="reportContent">
 <div class="card shadow-sm mb-4" style="border-radius: 12px;">
   <div class="card-body p-0">
@@ -226,7 +282,7 @@ if ($is_export) {
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($tax_types as $type => $data): ?>
+          <?php foreach ($display_types as $type => $data): ?>
           <tr>
             <td class="ps-4 fw-bold text-dark"><?= htmlspecialchars($type) ?></td>
             <?php foreach ($annual_years as $year): ?>
@@ -247,7 +303,7 @@ if ($is_export) {
               <td class="text-end pe-4">
                 <?php 
                 $total = 0;
-                foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
+                foreach ($display_types as $data) { $total += ($data[$year] ?? 0); }
                 echo $total > 0 ? number_format($total, 0) : '-';
                 ?>
               </td>
@@ -304,7 +360,7 @@ var chartData = <?= json_encode(array_map(function($type, $data) use ($annual_ye
         $row[(string)$year] = (float)($data[$year] ?? 0);
     }
     return $row;
-}, array_keys($tax_types), array_values($tax_types))) ?>;
+}, array_keys($display_types), array_values($display_types))) ?>;
 var chartYears = <?= json_encode(array_map('intval', $annual_years)) ?>;
 
 (function() {
