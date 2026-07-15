@@ -189,7 +189,7 @@ if ($is_export) {
       <p class="text-muted">Consolidated summary of tax expenditures across all tax regimes and years.</p>
     </div>
     <div class="d-flex gap-2">
-      <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
+      <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?><?= !empty($_GET['types']) ? '&' . http_build_query(['types' => (array)$_GET['types']]) : '' ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
       <button type="button" class="btn btn-danger" id="exportPdfBtn"><i class="fas fa-file-pdf me-1"></i> Export PDF</button>
       <a href="recalculate_all.php" class="btn btn-primary"><i class="fas fa-sync-alt me-1"></i> Update Data</a>
     </div>
