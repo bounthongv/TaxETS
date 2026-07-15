@@ -143,7 +143,7 @@ if ($is_export) {
     $sheet->getStyle('A1:' . $col . '1')->applyFromArray($headerStyle);
 
     $rowIdx = 2;
-    foreach ($tax_types as $type => $data) {
+    foreach ($display_types as $type => $data) {
         $sheet->setCellValue('A' . $rowIdx, $type);
         $sheet->getStyle('A' . $rowIdx)->getFont()->setBold(true);
         $col = 'B';
@@ -161,7 +161,7 @@ if ($is_export) {
     $col = 'B';
     foreach ($annual_years as $year) {
         $total = 0;
-        foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
+        foreach ($display_types as $data) { $total += ($data[$year] ?? 0); }
         $sheet->setCellValue($col . $rowIdx, $total > 0 ? $total : '');
         $sheet->getStyle($col . $rowIdx)->getNumberFormat()->setFormatCode('#,##0');
         $col++;
