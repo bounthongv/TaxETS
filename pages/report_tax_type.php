@@ -105,20 +105,6 @@ $tax_types = [
     'Land Concession (Non-Tax)'         => $land_concession_data
 ];
 
-// Multi-select tax type filter
-$selected_types = isset($_GET['types']) ? (array)$_GET['types'] : array_keys($tax_types);
-// Always include all types in the variable for chart/total calculation
-// but filter for display
-$display_types = [];
-foreach ($tax_types as $key => $data) {
-    if (in_array($key, $selected_types)) {
-        $display_types[$key] = $data;
-    }
-}
-if (empty($display_types)) {
-    $display_types = $tax_types; // show all if none selected
-}
-
 // Export to Excel
 if ($is_export) {
     require __DIR__ . '/../vendor/autoload.php';
@@ -143,7 +129,7 @@ if ($is_export) {
     $sheet->getStyle('A1:' . $col . '1')->applyFromArray($headerStyle);
 
     $rowIdx = 2;
-    foreach ($display_types as $type => $data) {
+    foreach ($tax_types as $type => $data) {
         $sheet->setCellValue('A' . $rowIdx, $type);
         $sheet->getStyle('A' . $rowIdx)->getFont()->setBold(true);
         $col = 'B';
@@ -161,7 +147,7 @@ if ($is_export) {
     $col = 'B';
     foreach ($annual_years as $year) {
         $total = 0;
-        foreach ($display_types as $data) { $total += ($data[$year] ?? 0); }
+        foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
         $sheet->setCellValue($col . $rowIdx, $total > 0 ? $total : '');
         $sheet->getStyle($col . $rowIdx)->getNumberFormat()->setFormatCode('#,##0');
         $col++;
@@ -189,7 +175,7 @@ if ($is_export) {
       <p class="text-muted">Consolidated summary of tax expenditures across all tax regimes and years.</p>
     </div>
     <div class="d-flex gap-2">
-      <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?><?= !empty($_GET['types']) ? '&' . http_build_query(['types' => (array)$_GET['types']]) : '' ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
+      <a href="?<?= reportAppendFilters(["export" => 1, "from_year" => $from_year, "to_year" => $to_year]) ?>" class="btn btn-success"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
       <button type="button" class="btn btn-danger" id="exportPdfBtn"><i class="fas fa-file-pdf me-1"></i> Export PDF</button>
       <a href="recalculate_all.php" class="btn btn-primary"><i class="fas fa-sync-alt me-1"></i> Update Data</a>
     </div>
@@ -217,14 +203,6 @@ if ($is_export) {
       </div>
       <?= reportImportDateFilterControl("report_tax_type.php") ?>
       <div class="col-md-2">
-        <label class="form-label small fw-bold text-muted text-uppercase">Tax Types</label>
-        <select name="types[]" multiple class="form-select border-0 bg-light" size="4">
-          <?php foreach (array_keys($tax_types) as $tkey): ?>
-            <option value="<?= htmlspecialchars($tkey) ?>" <?= in_array($tkey, $selected_types) ? 'selected' : '' ?>><?= htmlspecialchars($tkey) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="col-md-2">
         <button type="submit" class="btn btn-primary w-100 shadow-sm"><i class="fas fa-filter me-2"></i> Filter</button>
       </div>
       <div class="col-md-2">
@@ -233,8 +211,6 @@ if ($is_export) {
     </form>
   </div>
 </div>
-
-
 
 <div id="reportContent">
 <div class="card shadow-sm mb-4" style="border-radius: 12px;">
@@ -250,7 +226,7 @@ if ($is_export) {
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($display_types as $type => $data): ?>
+          <?php foreach ($tax_types as $type => $data): ?>
           <tr>
             <td class="ps-4 fw-bold text-dark"><?= htmlspecialchars($type) ?></td>
             <?php foreach ($annual_years as $year): ?>
@@ -271,7 +247,7 @@ if ($is_export) {
               <td class="text-end pe-4">
                 <?php 
                 $total = 0;
-                foreach ($display_types as $data) { $total += ($data[$year] ?? 0); }
+                foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
                 echo $total > 0 ? number_format($total, 0) : '-';
                 ?>
               </td>
@@ -328,7 +304,7 @@ var chartData = <?= json_encode(array_map(function($type, $data) use ($annual_ye
         $row[(string)$year] = (float)($data[$year] ?? 0);
     }
     return $row;
-}, array_keys($display_types), array_values($display_types))) ?>;
+}, array_keys($tax_types), array_values($tax_types))) ?>;
 var chartYears = <?= json_encode(array_map('intval', $annual_years)) ?>;
 
 (function() {
