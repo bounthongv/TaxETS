@@ -237,17 +237,15 @@ if ($is_export) {
 
 <!-- Multi-select Tax Type Filter -->
 <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
-  <div class="card-body py-3">
+  <div class="card-body py-2">
     <form method="GET" class="row align-items-center g-2">
-      <div class="col-auto">
-        <label class="form-label small fw-bold text-muted text-uppercase mb-0"><i class="fas fa-check-square me-1"></i> Show Tax Types</label>
-      </div>
       <div class="col">
-        <div class="d-flex flex-wrap gap-3">
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+          <span class="small fw-bold text-muted me-2">Filter:</span>
           <?php foreach (array_keys($tax_types) as $tkey): 
             $is_checked = in_array($tkey, $selected_types);
           ?>
-            <div class="form-check">
+            <div class="form-check form-check-inline mb-0">
               <input class="form-check-input" type="checkbox" name="types[]" value="<?= htmlspecialchars($tkey) ?>" id="type_<?= md5($tkey) ?>" <?= $is_checked ? 'checked' : '' ?>>
               <label class="form-check-label small" for="type_<?= md5($tkey) ?>"><?= htmlspecialchars($tkey) ?></label>
             </div>
@@ -262,7 +260,7 @@ if ($is_export) {
             <input type="hidden" name="<?= htmlspecialchars($k) ?>" value="<?= htmlspecialchars($v) ?>">
           <?php endif; ?>
         <?php endforeach; ?>
-        <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter me-1"></i> Apply</button>
+        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i> Apply</button>
       </div>
     </form>
   </div>
