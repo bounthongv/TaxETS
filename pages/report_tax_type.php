@@ -217,6 +217,14 @@ if ($is_export) {
       </div>
       <?= reportImportDateFilterControl("report_tax_type.php") ?>
       <div class="col-md-2">
+        <label class="form-label small fw-bold text-muted text-uppercase">Tax Types</label>
+        <select name="types[]" multiple class="form-select border-0 bg-light" size="4">
+          <?php foreach (array_keys($tax_types) as $tkey): ?>
+            <option value="<?= htmlspecialchars($tkey) ?>" <?= in_array($tkey, $selected_types) ? 'selected' : '' ?>><?= htmlspecialchars($tkey) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-2">
         <button type="submit" class="btn btn-primary w-100 shadow-sm"><i class="fas fa-filter me-2"></i> Filter</button>
       </div>
       <div class="col-md-2">
@@ -226,36 +234,7 @@ if ($is_export) {
   </div>
 </div>
 
-<!-- Multi-select Tax Type Filter -->
-<div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
-  <div class="card-body">
-    <form method="GET" class="row align-items-end g-2">
-      <div class="col-12">
-        <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i class="fas fa-check-square me-1"></i> Show Tax Types</label>
-        <div class="d-flex flex-wrap gap-2">
-          <?php foreach (array_keys($tax_types) as $tkey): 
-            $is_checked = in_array($tkey, $selected_types);
-          ?>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="checkbox" name="types[]" value="<?= htmlspecialchars($tkey) ?>" id="type_<?= md5($tkey) ?>" <?= $is_checked ? 'checked' : '' ?>>
-              <label class="form-check-label small" for="type_<?= md5($tkey) ?>"><?= htmlspecialchars($tkey) ?></label>
-            </div>
-          <?php endforeach; ?>
-        </div>
-      </div>
-      <div class="col-12 mt-2">
-        <?php foreach ($_GET as $k => $v): if ($k === 'types') continue; ?>
-          <?php if (is_array($v)): foreach ($v as $vv): ?>
-            <input type="hidden" name="<?= htmlspecialchars($k) ?>[]" value="<?= htmlspecialchars($vv) ?>">
-          <?php endforeach; else: ?>
-            <input type="hidden" name="<?= htmlspecialchars($k) ?>" value="<?= htmlspecialchars($v) ?>">
-          <?php endif; ?>
-        <?php endforeach; ?>
-        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i> Apply</button>
-      </div>
-    </form>
-  </div>
-</div>
+
 
 <div id="reportContent">
 <div class="card shadow-sm mb-4" style="border-radius: 12px;">
@@ -292,7 +271,7 @@ if ($is_export) {
               <td class="text-end pe-4">
                 <?php 
                 $total = 0;
-                foreach ($tax_types as $data) { $total += ($data[$year] ?? 0); }
+                foreach ($display_types as $data) { $total += ($data[$year] ?? 0); }
                 echo $total > 0 ? number_format($total, 0) : '-';
                 ?>
               </td>
