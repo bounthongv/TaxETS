@@ -33,6 +33,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["session_token"] = $token;
         
         if (tableExists($pdo, 'user_sessions')) {
+            // Invalidate any existing active session for this user (concurrent login prevention)
+            $stmt = $pdo->prepare("UPDATE user_sessions SET is_online = 0 WHERE user_id = ? AND is_online = 1");
+            $stmt->execute([$user["id"]]);
+            // Create the new session
             $stmt = $pdo->prepare("INSERT INTO user_sessions (user_id, session_token, ip_address) VALUES (?, ?, ?)");
             $stmt->execute([$user["id"], $token, $_SERVER["REMOTE_ADDR"] ?? "unknown"]);
         }
