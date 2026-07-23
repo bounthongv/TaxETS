@@ -68,12 +68,33 @@ INSERT INTO bm_profit_mandatory (start_year, end_year, sector, sub_sector, profi
 -- =============================================================
 
 INSERT INTO bm_profit_sme (start_year, end_year, sector, turnover_min, turnover_max, rate_percentage) VALUES
--- Micro enterprises (annual turnover up to 400M LAK)
-(2020, 2099, 'All', 0, 50000000, 0.10),            -- Under 50M: 0.1%
-(2020, 2099, 'All', 50000001, 100000000, 0.50),     -- 50M - 100M: 0.5%
-(2020, 2099, 'All', 100000001, 200000000, 1.00),    -- 100M - 200M: 1%
-(2020, 2099, 'All', 200000001, 400000000, 1.50),    -- 200M - 400M: 1.5%
-(2020, 2099, 'All', 400000001, NULL, 2.00);          -- Over 400M: 2% (still SME threshold)
+-- 2018-2019: per ITL Art.16(2), source: Benchmark by year_Profit Tax.pdf p.1
+-- Note: 12M-50M is lump sum (max 600,000 Kip/year) — not stored, engine falls back to expert TE
+(2018, 2019, 'Production', 0, 12000000, 0.00),              -- <=12M: 0%
+(2018, 2019, 'Commerce', 0, 12000000, 0.00),
+(2018, 2019, 'Service', 0, 12000000, 0.00),
+(2018, 2019, 'Production', 50000001, 120000000, 3.00),     -- 50M-120M
+(2018, 2019, 'Commerce', 50000001, 120000000, 4.00),
+(2018, 2019, 'Service', 50000001, 120000000, 5.00),
+(2018, 2019, 'Production', 120000001, 240000000, 4.00),    -- 120M-240M
+(2018, 2019, 'Commerce', 120000001, 240000000, 5.00),
+(2018, 2019, 'Service', 120000001, 240000000, 6.00),
+
+-- 2020-2021: per ITL Art.16(2), source: Benchmark by year_Profit Tax.pdf p.2
+(2020, 2021, 'Agriculture/Industry', 0, 50000000, 0.00),   -- <=50M: 0%
+(2020, 2021, 'Commerce', 0, 50000000, 0.00),
+(2020, 2021, 'Service', 0, 50000000, 0.00),
+(2020, 2021, 'Agriculture/Industry', 50000001, 400000000, 1.00),  -- 50M-400M
+(2020, 2021, 'Commerce', 50000001, 400000000, 2.00),
+(2020, 2021, 'Service', 50000001, 400000000, 3.00),
+
+-- 2022+: per ITL Art.16(2), source: Benchmark by year_Profit Tax.pdf p.3
+(2022, 2099, 'Agriculture/Industry', 0, 50000000, 0.00),
+(2022, 2099, 'Commerce', 0, 50000000, 0.00),
+(2022, 2099, 'Service', 0, 50000000, 0.00),
+(2022, 2099, 'Agriculture/Industry', 50000001, 400000000, 1.00),
+(2022, 2099, 'Commerce', 50000001, 400000000, 2.00),
+(2022, 2099, 'Service', 50000001, 400000000, 3.00);
 
 SELECT CONCAT('Seeded ', COUNT(*), ' standard rates') AS result FROM bm_profit_standard;
 SELECT CONCAT('Seeded ', COUNT(*), ' mandatory rates') AS result FROM bm_profit_mandatory;
