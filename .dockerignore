@@ -84,6 +84,7 @@ package-lock.json
 *~
 
 # --- Docker artifacts (no recursion!) ---
+dist/
 Dockerfile
 .dockerignore
 docker-compose*.yml
