@@ -171,13 +171,23 @@ SELECT id, 'flag_act_production_services', '=', '1', NULL FROM profit_provisions
 INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
 SELECT id, 'investment_license_date', 'EDATE_MONTHS_BETWEEN', '96', '156' FROM profit_provisions WHERE provision_number='15';
 
--- PROVISION 16: SEZ investor + zone1 or zone2 + specific activities (complex OR)
+-- PROVISION 16: SEZ investor (Zone 1) + specific activities (exemption phase)
+-- Engine only supports AND, so this is the Zone 1 path.
+-- Zone 2 path would need a separate provision or OR support in engine.
 INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
 SELECT id, 'flag_sez_investor', '=', '1', NULL FROM profit_provisions WHERE provision_number='16';
+INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
+SELECT id, 'zone_1', '=', '1', NULL FROM profit_provisions WHERE provision_number='16';
+INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
+SELECT id, 'flag_act_1_4_7_8_9', '=', '1', NULL FROM profit_provisions WHERE provision_number='16';
 
--- PROVISION 17: SEZ investor after exemption period
+-- PROVISION 17: SEZ investor (Zone 1) after exemption (rate relief)
 INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
 SELECT id, 'flag_sez_investor', '=', '1', NULL FROM profit_provisions WHERE provision_number='17';
+INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
+SELECT id, 'zone_1', '=', '1', NULL FROM profit_provisions WHERE provision_number='17';
+INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
+SELECT id, 'flag_act_1_4_7_8_9', '=', '1', NULL FROM profit_provisions WHERE provision_number='17';
 
 -- PROVISION 18: =IF(Z=1, 18, "") - Public benefit income
 INSERT INTO profit_provision_conditions (provision_id, field_name, operator, value_1, value_2)
