@@ -275,7 +275,7 @@ require_once __DIR__ . "/../includes/header.php";
           $total = count($modules);
           $enabled = 0;
           foreach ($modules as $mod => $name) {
-              $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>1, "can_update"=>0, "can_delete"=>0];
+              $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>0, "can_update"=>0, "can_delete"=>0];
               if ($p["can_read"]) $enabled++;
           }
           ?>
@@ -309,7 +309,7 @@ require_once __DIR__ . "/../includes/header.php";
                 <?php 
                 $prev_cat = null;
                 foreach ($modules as $mod => $name): 
-                  $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>1, "can_update"=>0, "can_delete"=>0];
+                  $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>0, "can_update"=>0, "can_delete"=>0];
                   $cat = explode(': ', $name)[0];
                   // Category header row
                   if ($cat !== $prev_cat):
