@@ -35,7 +35,7 @@ $current_page = basename($_SERVER["SCRIPT_NAME"] ?? $_SERVER["PHP_SELF"] ?? "");
 $current_module = str_replace(".php", "", $current_page);
 
 // Skip permission check for login, API endpoints, and static assets
-$skip_modules = ["login", "api_get_company_info", "get_districts", "get_villages", "save_gdp", "save_lse", "save_moic", "save_molsw", "save_mpi", "save_sezo", "save_taxris", "save_art9_activity"];
+$skip_modules = ["login", "index", "change_password", "api_get_company_info", "get_districts", "get_villages", "save_gdp", "save_lse", "save_moic", "save_molsw", "save_mpi", "save_sezo", "save_taxris", "save_art9_activity"];
 
 if (!in_array($current_module, $skip_modules)) {
     // Cache permission check to avoid repeated DB queries
