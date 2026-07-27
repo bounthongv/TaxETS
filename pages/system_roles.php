@@ -263,9 +263,40 @@ require_once __DIR__ . "/../includes/header.php";
         <div class="card-body p-0">
           <input type="hidden" name="action" value="save_permissions">
           <input type="hidden" name="role_id" value="<?= $selected_role ?>">
-          <div class="table-responsive">
+          
+          <?php 
+          // Build category groups from module names
+          $categories = [];
+          foreach ($modules as $mod => $name) {
+              $cat = explode(': ', $name)[0];
+              $categories[$cat][] = $mod;
+          }
+          // Calculate stats
+          $total = count($modules);
+          $enabled = 0;
+          foreach ($modules as $mod => $name) {
+              $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>1, "can_update"=>0, "can_delete"=>0];
+              if ($p["can_read"]) $enabled++;
+          }
+          ?>
+          
+          <!-- Permission Summary -->
+          <div class="px-4 py-3 border-bottom bg-light">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span>
+                <i class="fas fa-check-circle text-success me-1"></i>
+                <strong><?= $enabled ?></strong> of <strong><?= $total ?></strong> modules enabled
+                <span class="text-muted small ms-2">(<?= round($enabled/$total*100) ?>%)</span>
+              </span>
+              <span class="small text-muted">
+                <i class="fas fa-check-square me-1"></i> Check <strong>Read</strong> to grant page access
+              </span>
+            </div>
+          </div>
+          
+          <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
             <table class="table table-hover align-middle mb-0">
-              <thead class="bg-light text-muted small">
+              <thead class="bg-light text-muted small sticky-top">
                 <tr>
                   <th class="ps-4" style="width: 40%;">Module</th>
                   <th class="text-center">Create</th>
@@ -275,32 +306,58 @@ require_once __DIR__ . "/../includes/header.php";
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($modules as $mod => $name): 
+                <?php 
+                $prev_cat = null;
+                foreach ($modules as $mod => $name): 
                   $p = $permissions[$mod] ?? ["can_create"=>0, "can_read"=>1, "can_update"=>0, "can_delete"=>0];
+                  $cat = explode(': ', $name)[0];
+                  // Category header row
+                  if ($cat !== $prev_cat):
+                    $prev_cat = $cat;
                 ?>
-                <tr>
+                <tr class="bg-secondary bg-opacity-10">
+                  <td colspan="5" class="ps-4 py-2">
+                    <strong class="text-secondary" style="font-size: 0.85rem;">
+                      <i class="fas fa-folder-open me-2"></i><?= htmlspecialchars($cat) ?>
+                      <span class="text-muted small fw-normal ms-2">
+                        (<?= count($categories[$cat]) ?> modules)
+                      </span>
+                    </strong>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 ms-3" 
+                      onclick="toggleCategory(this, '<?= $cat ?>')" style="font-size: 0.75rem;">
+                      <i class="fas fa-check-double me-1"></i>All
+                    </button>
+                  </td>
+                </tr>
+                <?php endif; ?>
+                <tr class="<?= $p['can_read'] ? '' : 'table-danger' ?>">
                   <td class="ps-4">
                     <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
                     <small class="text-muted d-block" style="font-size: 0.75rem;"><?= htmlspecialchars($mod) ?></small>
                   </td>
                   <td class="text-center">
                     <div class="form-check form-check-inline m-0">
-                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][c]" <?= $p["can_create"] ? "checked" : "" ?>>
+                      <input type="checkbox" class="form-check-input category-<?= str_replace(' ', '_', $cat) ?>" 
+                             name="permissions[<?= $mod ?>][c]" <?= $p["can_create"] ? "checked" : "" ?>>
                     </div>
                   </td>
                   <td class="text-center">
                     <div class="form-check form-check-inline m-0">
-                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][r]" <?= $p["can_read"] ? "checked" : "" ?>>
+                      <input type="checkbox" class="form-check-input category-<?= str_replace(' ', '_', $cat) ?>"
+                             name="permissions[<?= $mod ?>][r]" <?= $p["can_read"] ? "checked" : "" ?>
+                             onchange="this.closest('tr').className=this.checked?'':'table-danger'">
                     </div>
                   </td>
                   <td class="text-center">
                     <div class="form-check form-check-inline m-0">
-                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][u]" <?= $p["can_update"] ? "checked" : "" ?>>
+                      <input type="checkbox" class="form-check-input category-<?= str_replace(' ', '_', $cat) ?>"
+                             name="permissions[<?= $mod ?>][u]" <?= $p["can_update"] ? "checked" : "" ?>>
                     </div>
                   </td>
                   <td class="text-center">
                     <div class="form-check form-check-inline m-0">
-                      <input type="checkbox" class="form-check-input" name="permissions[<?= $mod ?>][d]" <?= $p["can_delete"] ? "checked" : "" ?>>
+                      <input type="checkbox" class="form-check-input category-<?= str_replace(' ', '_', $cat) ?>"
+                             name="permissions[<?= $mod ?>][d]" <?= $p["can_delete"] ? "checked" : "" ?>>
                     </div>
                   </td>
                 </tr>
@@ -308,6 +365,22 @@ require_once __DIR__ . "/../includes/header.php";
               </tbody>
             </table>
           </div>
+          
+          <script>
+          function toggleCategory(btn, catName) {
+            var cls = 'category-' + catName.replace(/ /g, '_');
+            var checked = btn.classList.contains('all-on');
+            document.querySelectorAll('.' + cls).forEach(function(cb) {
+              cb.checked = !checked;
+              // Also toggle row highlighting for Read
+              if (cb.name && cb.name.endsWith('[r]')) {
+                cb.closest('tr').className = !checked ? '' : 'table-danger';
+              }
+            });
+            btn.classList.toggle('all-on');
+            btn.innerHTML = checked ? '<i class="fas fa-check-double me-1"></i>All' : '<i class="fas fa-times me-1"></i>None';
+          }
+          </script>
         </div>
       </div>
     </form>
