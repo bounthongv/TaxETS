@@ -19,7 +19,7 @@ if (isset($_SESSION["session_token"])) {
         $row = $stmt->fetch();
         if (!$row || !$row['is_online']) {
             session_destroy();
-            header("Location: " . BASE_URL . "/login.php");
+            header("Location: " . BASE_URL . "/login.php?reason=kicked");
             exit;
         }
         // Update last activity

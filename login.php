@@ -13,6 +13,12 @@ require_once __DIR__ . "/includes/db.php";
 
 $error = "";
 $email = "";
+$info = "";
+
+// Show kick-reason message (set by auth.php concurrent-login check)
+if (isset($_GET['reason']) && $_GET['reason'] === 'kicked') {
+    $info = "Your session was closed because your account was signed in from another device.";
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = $_POST["email"];
@@ -84,6 +90,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <h3 class="mt-3"><?= APP_NAME ?></h3>
             <p class="text-muted">Tax Expenditure Tracking System</p>
         </div>
+        
+        <?php if ($info): ?>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <?= htmlspecialchars($info) ?>
+        </div>
+        <?php endif; ?>
         
         <?php if ($error): ?>
         <div class="alert alert-danger">
