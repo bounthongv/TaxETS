@@ -1,7 +1,7 @@
 # Benchmark & Provision Effectiveness by Date
 
 > Created: 2026-07-28
-> Status: Revised — Phase 1 is now VAT (Customs/Excise already date-based)
+> Status: ✅ Complete — Salary Tax date-based. 4 tables already date-based.
 
 ---
 
@@ -61,7 +61,7 @@ Lower priority since yearly rates rarely change mid-year.
 
 ---
 
-## Technical Design (Phase 1 — VAT)
+## Technical Design (Phase 1 — Salary Tax)
 
 ### Benchmark Table Migration
 
@@ -80,12 +80,9 @@ ADD COLUMN valid_to   DATE NULL AFTER valid_from;
 
 ```php
 // Before
-$stmt = $pdo->prepare("SELECT rate FROM bm_vat WHERE start_year <= ? AND end_year >= ?");
-$stmt->execute([$year, $year]);
-
-// After (with backward compat)
-$stmt = $pdo->prepare("SELECT rate FROM bm_vat WHERE 
-    (valid_from IS NOT NULL AND ? BETWEEN valid_from AND valid_to) OR
-    (valid_from IS NULL AND start_year <= YEAR(?) AND end_year >= YEAR(?))");
-$stmt->execute([$filing_date, $filing_date]);
+# After (date-only — year rates use Jan 1 / Dec 31)
+$stmt = $pdo->prepare("SELECT rate_percentage FROM bm_salary_rates
+    WHERE provision_number = ? AND ? BETWEEN start_date AND end_date
+    ORDER BY id DESC LIMIT 1");
+$stmt->execute([$provision_number, $ref_date]);
 ```
