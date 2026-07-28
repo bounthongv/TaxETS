@@ -16,9 +16,26 @@ Current system uses `start_year`/`end_year` exclusively for all benchmark rates 
 - `bm_customs_*` tables are reference data only, not queried during TE calculation
 - **No changes needed for Customs/Excise** — already supports date granularity
 
+## Discovery: Most Tables Already Date-Based
+
+After scanning all 21 benchmark tables:
+
+| Table | Currently Uses | Status |
+|-------|---------------|--------|
+| `bm_vat` | `start_date`/`end_date` | ✅ Already date-based |
+| `bm_msme_definition` | `effective_date_from`/`effective_date_to` | ✅ Already date-based |
+| `bm_payment_condition_codes` | `effective_date_from`/`effective_date_to` | ✅ Already date-based |
+| `bm_customs_regime_codes` | `effective_date_from`/`effective_date_to` | ✅ Already date-based |
+| **`bm_salary_rates`** | `start_year`/`end_year` | ❌ **Only one needing conversion** |
+
+All other tables (CIT, PIT, SEZ, Land, Resource, Royalty, Excise, etc.) either:
+- Should stay year-based per regulation (CIT, PIT, SEZ, Land), OR
+- Benchmark comes from Excel import (Customs/Excise), OR  
+- Are Phase 2 lower priority (Resource, Royalty)
+
 ## Plan (Revised)
 
-### Phase 1: VAT + Salary Tax (Date-based) — NEXT
+### Phase 1: Salary Tax (Date-based) — DONE ✅
 
 | Item | Detail |
 |------|--------|

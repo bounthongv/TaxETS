@@ -353,6 +353,8 @@ CREATE TABLE `bm_salary_rates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `start_year` int(11) NOT NULL,
   `end_year` int(11) NOT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
   `provision_number` varchar(10) NOT NULL,
   `rate_percentage` decimal(5,2) NOT NULL DEFAULT 10.00,
   `description` varchar(255) DEFAULT NULL,
