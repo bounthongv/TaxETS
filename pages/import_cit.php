@@ -50,6 +50,96 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $imported = 0; $skipped = 0;
         $unmapped_prov = 0; $unmapped_dist = 0; $unmapped_sect = 0;
         $error_log = [];
+        $duplicate_log = [];
+        $ok = true;
+
+        // --- Phase 1: Duplicate Check (prevent double-import) ---
+        // Scan all rows first, collect TIN + tax_year pairs, check against DB
+        $dup_check_rows = [];
+        $firstDataRow = 2; // configurable
+        $highestRow = $sheet->getHighestRow();
+        for ($row = $firstDataRow; $row <= $highestRow; $row++) {
+            $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? '');
+            if (empty($tin)) continue;
+            $excel_year = (int)$sheet->getCell("A" . $row)->getCalculatedValue();
+            if ($excel_year <= 0) continue;
+            $dup_check_rows[] = [
+                "row" => $row,
+                "tin" => $tin,
+                "year" => $excel_year,
+                "name" => trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? ''),
+            ];
+        }
+
+        if (!empty($dup_check_rows)) {
+            // Build batch-parameterised query to check existing records
+            $placeholders = [];
+            $params = [];
+            foreach ($dup_check_rows as $i => $dr) {
+                $placeholders[] = "(? , ?)";
+                $params[] = $dr["tin"];
+                $params[] = $dr["year"];
+            }
+            $placeholders_str = implode(", ", $placeholders);
+            $existing = $pdo->prepare("
+                SELECT c.tin, c.tax_year, c.company_name, c.import_batch_id
+                FROM companies c
+                WHERE (c.tin, c.tax_year) IN ($placeholders_str)
+                ORDER BY c.tin, c.tax_year
+            ");
+            $existing->execute($params);
+            $dup_map = [];
+            foreach ($existing->fetchAll() as $ex) {
+                $key = $ex["tin"] . "|" . $ex["tax_year"];
+                if (!isset($dup_map[$key])) {
+                    $dup_map[$key] = [];
+                }
+                $dup_map[$key][] = $ex;
+            }
+
+            $dup_count = 0;
+            foreach ($dup_check_rows as $dr) {
+                $key = $dr["tin"] . "|" . $dr["year"];
+                if (isset($dup_map[$key])) {
+                    $dup_count++;
+                    $batch_ids = array_unique(array_column($dup_map[$key], "import_batch_id"));
+                    $error_log[] = "Row {$dr['row']}: TIN '{$dr['tin']}' / Year {$dr['year']} — already exists in batch(es): " . implode(", ", $batch_ids);
+                    $duplicate_log[] = "{$dr['row']},{$dr['tin']},{$dr['year']}," . str_replace(",", ";", $dr['name']) . "," . implode("; ", $batch_ids);
+                }
+            }
+
+            if ($dup_count > 0) {
+                // Write duplicate log file
+                $dup_log_content = "Row,TIN,Year,Company Name,Existing Batch(es)
+\n" . implode("
+\n", $duplicate_log) . "
+\n";
+                $dup_log_path = __DIR__ . "/../data/logs/{$batch_id}_duplicates.csv";
+                file_put_contents($dup_log_path, $dup_log_content);
+
+                $message = "<div class='alert alert-danger'><strong>⛔ Import Blocked!</strong> Found <strong>$dup_count</strong> duplicate record(s) that already exist in the database.<br>";
+                $message .= "Please review the details below, then either:<br>";
+                $message .= "1. <strong>Clean up the database</strong> by deleting the existing batch(es) first (Admin only), or<br>";
+                $message .= "2. <strong>Remove the duplicate rows</strong> from your Excel file and try again.<br><br>";
+                $message .= "<a href='download_log.php?log_id={$batch_id}_duplicates' class='btn btn-sm btn-danger'><i class='fas fa-download me-1'></i> Download Duplicate Report (CSV)</a></div>";
+
+                if (!empty($error_log)) {
+                    $log_content = "DUPLICATE CHECK LOG - " . date("Y-m-d H:i:s") . "
+\n";
+                    $log_content .= "Batch: $batch_id
+\n";
+                    $log_content .= "File: " . $file["name"] . "
+\n
+\n";
+                    $log_content .= implode("
+\n", $error_log);
+                    file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
+                    $message .= "<br><br><a href='download_log.php?log_id=$batch_id' class='btn btn-sm btn-outline-danger'><i class='fas fa-download me-1'></i> Download Detailed Error Log</a>";
+                }
+                $ok = false;
+            }
+            unset($existing);
+        }
 
         // --- Pre-load Dictionary for Smart Mapping ---
         $prov_rows = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces")->fetchAll();
@@ -186,6 +276,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         if (trim($sheet->getCell("A4")->getCalculatedValue() ?? '') === 'Tax Year') {
             $firstDataRow = 5; // Expert-standard template
         }
+
+        // Skip main import if duplicate check blocked it
+        if ($ok):
 
         for ($row = $firstDataRow; $row <= $sheet->getHighestRow(); $row++) {
             $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? '');
@@ -366,10 +459,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $message .= ($unmapped_sect == 0 ? "✅ All Sectors mapped.<br>" : "⚠️ $unmapped_sect unknown Sectors.<br>");
         
         if (!empty($error_log)) {
-            $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "\r\n";
-            $log_content .= "Batch: $batch_id\r\n";
-            $log_content .= "----------------------------------------\r\n";
-            $log_content .= implode("\r\n", $error_log);
+            $log_content = "IMPORT DIAGNOSTIC LOG - " . date("Y-m-d H:i:s") . "
+\n";
+            $log_content .= "Batch: $batch_id
+\n";
+            $log_content .= "----------------------------------------
+\n";
+            $log_content .= implode("
+\n", $error_log);
             
             // Save to persistent file
             if (!is_dir(__DIR__ . "/../data/logs")) mkdir(__DIR__ . "/../data/logs", 0777, true);
@@ -377,6 +474,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
 
             $message .= "<br><a href='download_log.php?log_id=$batch_id' target='_blank' class='btn btn-sm btn-outline-danger mt-2'><i class='fas fa-download me-1'></i> Download Detailed Error Log</a>";
         }
+    endif; // $ok (skip main import if duplicates found)
     } catch (Exception $e) {
         $message = "Error: " . $e->getMessage(); $msg_type = "danger";
     }
