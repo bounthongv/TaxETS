@@ -50,7 +50,70 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $batch_id = "BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
+        $duplicate_log = [];
         $max_row = $sheet->getHighestRow();
+        $ok = true;
+
+        // --- Phase 1: Duplicate Check ---
+        $dup_check_rows = [];
+        for ($row = 5; $row <= $max_row; $row++) {
+            $ptin = trim($sheet->getCell("C" . $row)->getCalculatedValue() ?? '');
+            if (empty($ptin)) continue;
+            $year = (int)$sheet->getCell("A" . $row)->getCalculatedValue();
+            if ($year <= 0) continue;
+            $dup_check_rows[] = [
+                "row" => $row,
+                "ptin" => $ptin,
+                "year" => $year,
+                "name" => trim($sheet->getCell("D" . $row)->getCalculatedValue() ?? ''),
+            ];
+        }
+
+        if (!empty($dup_check_rows)) {
+            $placeholders = []; $params = [];
+            foreach ($dup_check_rows as $dr) {
+                $placeholders[] = "(? , ?)"; $params[] = $dr["ptin"]; $params[] = $dr["year"];
+            }
+            $existing = $pdo->prepare("
+                SELECT p.ptin, p.tax_year, p.individual_name, p.batch_id
+                FROM import_pit_data p
+                WHERE (p.ptin, p.tax_year) IN (" . implode(", ", $placeholders) . ")
+                ORDER BY p.ptin, p.tax_year
+            ");
+            $existing->execute($params);
+            $dup_map = [];
+            foreach ($existing->fetchAll() as $ex) {
+                $key = $ex["ptin"] . "|" . $ex["tax_year"];
+                if (!isset($dup_map[$key])) $dup_map[$key] = [];
+                $dup_map[$key][] = $ex;
+            }
+
+            $dup_count = 0;
+            foreach ($dup_check_rows as $dr) {
+                $key = $dr["ptin"] . "|" . $dr["year"];
+                if (isset($dup_map[$key])) {
+                    $dup_count++;
+                    $batch_ids = array_unique(array_column($dup_map[$key], "batch_id"));
+                    $error_log[] = "Row {$dr['row']}: PTIN '{$dr['ptin']}' / Year {$dr['year']} — exists in batch(es): " . implode(", ", $batch_ids);
+                    $duplicate_log[] = "{$dr['row']},{$dr['ptin']},{$dr['year']}," . str_replace(",", ";", $dr['name']) . "," . implode("; ", $batch_ids);
+                }
+            }
+
+            if ($dup_count > 0) {
+                file_put_contents(__DIR__ . "/../data/logs/{$batch_id}_duplicates.csv",
+                    "Row,PTIN,Year,Name,Existing Batch(es)\n" . implode("\n", $duplicate_log) . "\n");
+                $message = "<div class='alert alert-danger'><strong>⛔ Import Blocked!</strong> Found <strong>$dup_count</strong> duplicate record(s) already in the database.<br>";
+                $message .= "Review the details below, then either:<br>";
+                $message .= "1. <strong>Clean up the database</strong> by deleting the existing batch(es) (Admin only), or<br>";
+                $message .= "2. <strong>Remove the duplicate rows</strong> from your Excel file.<br><br>";
+                $message .= "<a href='download_log.php?log_id={$batch_id}_duplicates' class='btn btn-sm btn-danger'><i class='fas fa-download me-1'></i> Download Duplicate Report (CSV)</a></div>";
+                $log_content = "DUPLICATE CHECK LOG - " . date("Y-m-d H:i:s") . "\nBatch: $batch_id\nFile: " . $file["name"] . "\n\n" . implode("\n", $error_log);
+                file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
+                $message .= "<br><a href='download_log.php?log_id=$batch_id' class='btn btn-sm btn-outline-danger'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+                $ok = false;
+            }
+            unset($existing);
+        }
 
         // Helper: numeric from cell
         $num = function($col) use ($sheet) {
@@ -86,6 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $ph = implode(", ", array_fill(0, count($cols), "?"));
         $stmt = $pdo->prepare("INSERT INTO import_pit_data ($cn) VALUES ($ph)");
 
+        if ($ok):
         $empty_streak = 0;
         for ($row = 5; $row <= $max_row; $row++) {  // Row 5 = first data row
             $ptin = $getStr("C", $row);
@@ -195,6 +259,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $stmt->execute($data);
             $imported++;
         }
+        endif; // $ok (skip main import if duplicates found)
 
         $message = "<strong>Import Success!</strong> Imported $imported records.<br><br>";
         if ($skipped > 0) {
