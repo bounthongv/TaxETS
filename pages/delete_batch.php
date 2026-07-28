@@ -5,6 +5,21 @@ $pdo = getDbConnection();
 $type = $_POST["type"] ?? "cit";
 $batch_id = $_POST["batch_id"] ?? "";
 
+// Require authentication
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION["user_id"])) {
+    header("Location: " . BASE_URL . "/login.php");
+    exit;
+}
+// Only SUPER ADMIN (role 1) and ADMIN (role 2) can delete batches
+$role_id = (int)($_SESSION["role_id"] ?? 0);
+if ($role_id > 2) {
+    http_response_code(403);
+    die("Access Denied: Only administrators can delete batches.");
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($batch_id)) {
     // Persistent Log Deletion
     $log_path = __DIR__ . "/../data/logs/" . $batch_id . ".log";

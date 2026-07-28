@@ -162,11 +162,14 @@ $batchCount = count($rows);
                             <?php if (file_exists(__DIR__ . "/../data/logs/" . $batchId . ".log")): ?>
                                 <a href="download_log.php?log_id=<?= urlencode($batchId) ?>" class="btn btn-sm btn-outline-danger" title="Download Log"><i class="fas fa-file-alt"></i></a>
                             <?php endif; ?>
+                            <?php $is_admin = isset($_SESSION["role_id"]) && (int)$_SESSION["role_id"] <= 2; ?>
+                            <?php if ($is_admin): ?>
                             <form method="POST" action="delete_batch.php" class="d-inline" onsubmit="return confirm('Delete this batch and related TE results?')">
                                 <input type="hidden" name="type" value="<?= htmlspecialchars($meta["delete"]) ?>">
                                 <input type="hidden" name="batch_id" value="<?= htmlspecialchars($batchId) ?>">
                                 <button class="btn btn-sm btn-outline-secondary" title="Delete"><i class="fas fa-trash"></i></button>
                             </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
