@@ -17,7 +17,7 @@ Permission enforcement is implemented in `includes/auth.php` — every page that
 |----|------|-------------|---------------|
 | 1 | **SUPER ADMIN** | **Full access to ALL 119 modules** (CRUD) | Administrator |
 | 2 | **ADMIN** | **Full access to ALL 119 modules** (CRUD) | Trainer, APIS User, bie98848566@gmail.com |
-| 3 | **ACCOUNTING** | **Read-only** on 112 non-admin modules | — |
+| 3 | **ANALYST** | **Read-only** on 112 non-admin modules | — |
 | 4 | **TECH_TEAM_MOF** | **Read-only** on 112 non-admin modules | mof1–mof5 |
 | 5 | **USER** | **Read-only** on 36 report/repo modules | — |
 
@@ -184,11 +184,11 @@ Below is the full list of modules organized by functional area. Permissions can 
 |------|:------------:|:-----:|:---:|:-----:|:-----:|
 | SUPER ADMIN | 119 | 119 | 119 | 119 | 119 |
 | ADMIN | 119 | 119 | 119 | 119 | 119 |
-| ACCOUNTING | 112 | 0 | 112 | 0 | 0 |
+| ANALYST | 112 | 0 | 112 | 0 | 0 |
 | TECH_TEAM_MOF | 112 | 0 | 112 | 0 | 0 |
 | USER | 36 | 0 | 36 | 0 | 0 |
 
-ACCOUNTING and TECH_TEAM_MOF have read-only access to all **non-admin** modules (112 modules). System admin modules (users, roles, history, logs, ip, online, backup) are excluded.  
+ANALYST and TECH_TEAM_MOF have read-only access to all **non-admin** modules (112 modules). System admin modules (users, roles, history, logs, ip, online, backup) are excluded.  
 USER has read-only access to **reports only** (36 modules).
 
 ### 1.4 Configuring Permissions
@@ -271,7 +271,7 @@ This is implemented in:
 | System Administrator | SUPER ADMIN | Full control over users, roles, permissions, and all data |
 | APIS Team / Trainers | ADMIN | Same as SUPER ADMIN — can manage everything |
 | MOF Technical Staff | TECH_TEAM_MOF | Read-only access to benchmark rates, imports, calculators, reports |
-| MOF Accountants | ACCOUNTING | Read-only access to imports, calculators, reports |
+| MOF Accountants | ANALYST | Read-only access to imports, calculators, reports |
 | External Viewers | USER | Read-only access to reports only |
 
 ---
