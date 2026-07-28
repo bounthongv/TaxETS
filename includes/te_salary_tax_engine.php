@@ -79,25 +79,21 @@ class TESalaryTaxEngine {
 
     /**
      * Look up the benchmark rate for a given date and provision number.
-     * Uses start_date/end_date range (with fallback to start_year/end_year for legacy data).
+     * Uses start_date/end_date range. For year-based rates, use Jan 1 to Dec 31.
      */
     private function lookupRate(string $ref_date, string $provision_number): float {
         if (empty($provision_number)) {
             $provision_number = 'Multiple';
         }
 
-        // Try exact provision match — date-based lookup with year fallback
+        // Try exact provision match — date-based lookup
         $stmt = $this->pdo->prepare("
             SELECT rate_percentage FROM bm_salary_rates
             WHERE provision_number = ?
-            AND (
-                (start_date IS NOT NULL AND ? BETWEEN start_date AND end_date)
-                OR
-                (start_date IS NULL AND start_year <= YEAR(?) AND end_year >= YEAR(?))
-            )
+            AND ? BETWEEN start_date AND end_date
             ORDER BY id DESC LIMIT 1
         ");
-        $stmt->execute([$provision_number, $ref_date, $ref_date, $ref_date]);
+        $stmt->execute([$provision_number, $ref_date]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
@@ -108,14 +104,10 @@ class TESalaryTaxEngine {
         $stmt2 = $this->pdo->prepare("
             SELECT rate_percentage FROM bm_salary_rates
             WHERE provision_number = 'Multiple'
-            AND (
-                (start_date IS NOT NULL AND ? BETWEEN start_date AND end_date)
-                OR
-                (start_date IS NULL AND start_year <= YEAR(?) AND end_year >= YEAR(?))
-            )
+            AND ? BETWEEN start_date AND end_date
             ORDER BY id DESC LIMIT 1
         ");
-        $stmt2->execute([$ref_date, $ref_date, $ref_date]);
+        $stmt2->execute([$ref_date]);
         $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
 
         if ($row2) {
