@@ -27,6 +27,50 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $batch_id = "RESOURCE_BATCH_" . date("YmdHis");
         $imported = 0; $skipped = 0;
         $error_log = [];
+        $duplicate_log = [];
+        $ok = true;
+
+        // --- Phase 1: Duplicate Check ---
+        $highestRow = $sheet->getHighestRow();
+        $dup_check_rows = [];
+        for ($row = 2; $row <= $highestRow; $row++) {
+            $tin = trim($sheet->getCell("A" . $row)->getCalculatedValue() ?? "");
+            if (empty($tin)) continue;
+            // Determine tax year
+            $isNewTemplate = (isset($headerQ) && $headerQ === 'usercomment');
+            if (!$isNewTemplate) { $headerQ = $normalizeHeader($sheet->getCell("Q1")->getCalculatedValue() ?? ''); $isNewTemplate = ($headerQ === 'usercomment'); }
+            $year = $isNewTemplate ? (int)$sheet->getCell("D" . $row)->getCalculatedValue() : (int)$sheet->getCell("F" . $row)->getCalculatedValue();
+            if ($year <= 0) continue;
+            $dup_check_rows[] = ["row" => $row, "tin" => $tin, "year" => $year];
+        }
+        if (!empty($dup_check_rows)) {
+            $ph = []; $prm = [];
+            foreach ($dup_check_rows as $dr) { $ph[] = "(?, ?)"; $prm[] = $dr["tin"]; $prm[] = $dr["year"]; }
+            $existing = $pdo->prepare("SELECT r.tin, r.tax_year, r.batch_id FROM import_resource_data r WHERE (r.tin, r.tax_year) IN (" . implode(", ", $ph) . ")");
+            $existing->execute($prm);
+            $dup_map = [];
+            foreach ($existing->fetchAll() as $ex) { $key = $ex["tin"] . "|" . $ex["tax_year"]; if (!isset($dup_map[$key])) $dup_map[$key] = []; $dup_map[$key][] = $ex; }
+            $dup_count = 0;
+            foreach ($dup_check_rows as $dr) {
+                $key = $dr["tin"] . "|" . $dr["year"];
+                if (isset($dup_map[$key])) { $dup_count++;
+                    $bids = array_unique(array_column($dup_map[$key], "batch_id"));
+                    $error_log[] = "Row {$dr['row']}: TIN '{$dr['tin']}' / Year {$dr['year']} in batch(es): " . implode(", ", $bids);
+                    $duplicate_log[] = "{$dr['row']},{$dr['tin']},{$dr['year']},," . implode("; ", $bids);
+                }
+            }
+            if ($dup_count > 0) {
+                file_put_contents(__DIR__ . "/../data/logs/{$batch_id}_duplicates.csv", "Row,TIN,Year,Existing Batch(es)\n" . implode("\n", $duplicate_log) . "\n");
+                $message = "<div class='alert alert-danger'><strong>⛔ Import Blocked!</strong> Found <strong>$dup_count</strong> duplicates.<br><br><a href='download_log.php?log_id={$batch_id}_duplicates' class='btn btn-sm btn-danger'><i class='fas fa-download me-1'></i> Download Report</a></div>";
+                $log_content = "DUPLICATE CHECK LOG - " . date("Y-m-d H:i:s") . "\nBatch: $batch_id\n\n" . implode("\n", $error_log);
+                file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
+                $message .= "<br><a href='download_log.php?log_id=$batch_id' class='btn btn-sm btn-outline-danger'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+                $ok = false;
+            }
+            unset($existing);
+        }
+
+        if ($ok):
 
         // Detect template type
         $normalizeHeader = function($value) {
@@ -165,6 +209,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $pdo->prepare("INSERT INTO import_resource_data ($cols) VALUES ($ph)")->execute(array_values($data));
             $imported++;
         }
+        endif; // $ok (skip main import if duplicates found)
 
         if ($imported > 0) {
             $message = "<strong>Import Success!</strong> Imported $imported records.<br>";

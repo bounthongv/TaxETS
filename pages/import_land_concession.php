@@ -24,6 +24,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
         $imported = 0; $skipped = 0;
         $unmapped_prov = 0; $unmapped_dist = 0;
         $error_log = [];
+        $duplicate_log = [];
+        $ok = true;
+
+        // --- Phase 1: Duplicate Check ---
+        $highestRow = $sheet->getHighestRow();
+        $dup_check_rows = [];
+        for ($row = $firstDataRow; $row <= $highestRow; $row++) {
+            $tin = trim($sheet->getCell("B" . $row)->getCalculatedValue() ?? "");
+            if (empty($tin)) continue;
+            $dup_check_rows[] = ["row" => $row, "tin" => $tin];
+        }
+        if (!empty($dup_check_rows)) {
+            $tins = array_unique(array_column($dup_check_rows, "tin"));
+            $ph = implode(",", array_fill(0, count($tins), "?"));
+            $existing = $pdo->prepare("SELECT tin, import_batch_id FROM repo_land_concession_data WHERE tin IN ($ph) GROUP BY tin");
+            $existing->execute(array_values($tins));
+            $existing_tins = [];
+            foreach ($existing->fetchAll() as $ex) { $existing_tins[$ex["tin"]] = $ex["import_batch_id"]; }
+            $dup_count = 0;
+            foreach ($dup_check_rows as $dr) {
+                if (isset($existing_tins[$dr["tin"]])) {
+                    $dup_count++;
+                    $error_log[] = "Row {$dr['row']}: TIN '{$dr['tin']}' already exists in batch: {$existing_tins[$dr['tin']]}";
+                    $duplicate_log[] = "{$dr['row']},{$dr['tin']}," . $existing_tins[$dr['tin']];
+                }
+            }
+            if ($dup_count > 0) {
+                file_put_contents(__DIR__ . "/../data/logs/{$batch_id}_duplicates.csv", "Row,TIN,Existing Batch\n" . implode("\n", $duplicate_log) . "\n");
+                $message = "<div class='alert alert-danger'><strong>⛔ Import Blocked!</strong> Found <strong>$dup_count</strong> TIN(s) already present.<br><br><a href='download_log.php?log_id={$batch_id}_duplicates' class='btn btn-sm btn-danger'><i class='fas fa-download me-1'></i> Download Report</a></div>";
+                $log_content = "DUPLICATE CHECK LOG - " . date("Y-m-d H:i:s") . "\nBatch: $batch_id\n\n" . implode("\n", $error_log);
+                file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
+                $message .= "<br><a href='download_log.php?log_id=$batch_id' class='btn btn-sm btn-outline-danger'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+                $ok = false;
+            }
+            unset($existing);
+        }
+
+        if ($ok):
 
         // 1. Pre-load Dictionary for Resolution
         $prov_rows = $pdo->query("SELECT province_code AS pro_id, province_name AS pro_name FROM provinces")->fetchAll();
@@ -220,6 +258,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["excel_file"])) {
             $pdo->prepare("INSERT INTO repo_land_concession_data ($cols) VALUES ($ph)")->execute(array_values($data));
             $imported++;
         }
+        endif; // $ok (skip main import if duplicates found)
 
         if ($imported > 0) {
             $message = "<strong>Import Success!</strong> Imported $imported records.<br>";
