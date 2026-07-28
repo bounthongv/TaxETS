@@ -181,9 +181,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
         $skipped = 0;
         $unmapped_prov = 0;
         $error_log = [];
+        $duplicate_log = [];
         $empty_streak = 0;
+        $ok = true;
+
+        // --- Phase 1: Duplicate Check ---
+        $dup_check_rows = [];
+        foreach ($data as $index => $row) {
+            if ($index <= 1) continue;
+            $tin = trim($row['B'] ?? '');
+            if (empty($tin)) continue;
+            $period = $row['E'] ?? '';
+            $period_clean = null;
+            if (!empty($period)) {
+                if (is_numeric($period)) {
+                    $d = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($period);
+                    $period_clean = $d->format('Y-m-d');
+                } else {
+                    $period_clean = date('Y-m-d', strtotime($period));
+                }
+            }
+            if (empty($period_clean)) continue;
+            $dup_check_rows[] = [
+                "row" => $index,
+                "tin" => $tin,
+                "period" => $period_clean,
+                "name" => trim($row['C'] ?? ''),
+            ];
+        }
+
+        if (!empty($dup_check_rows)) {
+            $placeholders = [];
+            $params = [];
+            foreach ($dup_check_rows as $dr) {
+                $placeholders[] = "(? , ?)";
+                $params[] = $dr["tin"];
+                $params[] = $dr["period"];
+            }
+            $placeholders_str = implode(", ", $placeholders);
+            $existing = $pdo->prepare("
+                SELECT v.tin, v.filing_period, v.name, v.batch_id
+                FROM import_vat_data v
+                WHERE (v.tin, v.filing_period) IN ($placeholders_str)
+                ORDER BY v.tin, v.filing_period
+            ");
+            $existing->execute($params);
+            $dup_map = [];
+            foreach ($existing->fetchAll() as $ex) {
+                $key = $ex["tin"] . "|" . $ex["filing_period"];
+                if (!isset($dup_map[$key])) $dup_map[$key] = [];
+                $dup_map[$key][] = $ex;
+            }
+
+            $dup_count = 0;
+            foreach ($dup_check_rows as $dr) {
+                $key = $dr["tin"] . "|" . $dr["period"];
+                if (isset($dup_map[$key])) {
+                    $dup_count++;
+                    $batch_ids = array_unique(array_column($dup_map[$key], "batch_id"));
+                    $error_log[] = "Row {$dr['row']}: TIN '{$dr['tin']}' / Period {$dr['period']} — already exists in batch(es): " . implode(", ", $batch_ids);
+                    $duplicate_log[] = "{$dr['row']},{$dr['tin']},{$dr['period']}," . str_replace(",", ";", $dr['name']) . "," . implode("; ", $batch_ids);
+                }
+            }
+
+            if ($dup_count > 0) {
+                $dup_log_content = "Row,TIN,Period,Name,Existing Batch(es)\n" . implode("\n", $duplicate_log) . "\n";
+                $dup_log_path = __DIR__ . "/../data/logs/{$batch_id}_duplicates.csv";
+                file_put_contents($dup_log_path, $dup_log_content);
+
+                $message = "<div class='alert alert-danger'><strong>⛔ Import Blocked!</strong> Found <strong>$dup_count</strong> duplicate record(s) already in the database.<br>";
+                $message .= "Review the details below, then either:<br>";
+                $message .= "1. <strong>Clean up the database</strong> by deleting the existing batch(es) (Admin only), or<br>";
+                $message .= "2. <strong>Remove the duplicate rows</strong> from your Excel file.<br><br>";
+                $message .= "<a href='download_log.php?log_id={$batch_id}_duplicates' class='btn btn-sm btn-danger'><i class='fas fa-download me-1'></i> Download Duplicate Report (CSV)</a></div>";
+
+                $log_content = "DUPLICATE CHECK LOG - " . date("Y-m-d H:i:s") . "\n";
+                $log_content .= "Batch: $batch_id\nFile: " . $file['name'] . "\n\n";
+                $log_content .= implode("\n", $error_log);
+                file_put_contents(__DIR__ . "/../data/logs/$batch_id.log", $log_content);
+                $message .= "<br><a href='download_log.php?log_id=$batch_id' class='btn btn-sm btn-outline-danger'><i class='fas fa-download me-1'></i> Download Error Log</a>";
+                $ok = false;
+            }
+            unset($existing);
+        }
 
         // Headers in row 1, data from row 2+
+        if ($ok):
         foreach ($data as $index => $row) {
             if ($index <= 1) continue;
 
@@ -245,6 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
             $pdo->prepare("INSERT INTO import_vat_data ($cols) VALUES ($ph)")->execute(array_values($record));
             $inserted++;
         }
+        endif; // $ok (skip main import if duplicates found)
 
         if ($inserted > 0) {
             $message = "<strong>Import Success!</strong> Imported $inserted records.<br>";
