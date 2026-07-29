@@ -254,6 +254,8 @@ CREATE TABLE `bm_natural_resource` (
   `rate_percentage` decimal(15,2) DEFAULT 0.00,
   `start_year` smallint(6) NOT NULL DEFAULT 2025,
   `end_year` smallint(6) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
   `active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
@@ -280,6 +282,8 @@ CREATE TABLE `bm_pit_employment` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `start_year` int(11) NOT NULL,
   `end_year` int(11) NOT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
   `min_income` decimal(20,2) NOT NULL,
   `max_income` decimal(20,2) DEFAULT NULL,
   `rate_percentage` decimal(5,2) NOT NULL,
@@ -292,6 +296,8 @@ CREATE TABLE `bm_pit_flat_rates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `start_year` int(11) NOT NULL,
   `end_year` int(11) NOT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
   `income_type` varchar(100) NOT NULL,
   `rate_percentage` decimal(5,2) NOT NULL,
   PRIMARY KEY (`id`)
