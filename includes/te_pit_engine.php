@@ -72,11 +72,21 @@ class TEPitEngine {
 
     public function calculateIndividual(array $row): array {
         $year = (int)$row['tax_year'];
+        $filing_date = $row['filing_date'] ?? '';
+
+        // Determine reference date
+        $ref_date = null;
+        if (!empty($filing_date) && $filing_date !== '0000-00-00') {
+            $ref_date = $filing_date;
+        } else {
+            $ref_date = date('Y-m-d', mktime(0, 0, 0, 1, 1, $year));
+        }
+
         $employment_income = $this->sumProvisionAmounts($row, ['21', '22', '24', '25', '29']);
         $other_income = $this->sumProvisionAmounts($row, ['23_1', '23_2', '26', '27', '28_1', '28_2']);
 
-        $benchmark_employment_tax = $this->calculateProgressiveTax($year, $employment_income);
-        $benchmark_other_tax = $this->calculateFlatRateTax($year, $row);
+        $benchmark_employment_tax = $this->calculateProgressiveTax($ref_date, $employment_income);
+        $benchmark_other_tax = $this->calculateFlatRateTax($ref_date, $row);
         $total_benchmark_tax = $benchmark_employment_tax + $benchmark_other_tax;
 
         $actual_tax_paid = $this->calculateActualTaxPaid($row);
@@ -105,13 +115,13 @@ class TEPitEngine {
         return $total;
     }
 
-    private function calculateProgressiveTax(int $year, float $income): float {
+    private function calculateProgressiveTax(string $ref_date, float $income): float {
         if ($income <= 0) {
             return 0.0;
         }
 
-        $stmt = $this->pdo->prepare("SELECT min_income, max_income, rate_percentage FROM bm_pit_employment WHERE start_year <= ? AND end_year >= ? ORDER BY min_income ASC");
-        $stmt->execute([$year, $year]);
+        $stmt = $this->pdo->prepare("SELECT min_income, max_income, rate_percentage FROM bm_pit_employment WHERE ? BETWEEN start_date AND end_date ORDER BY min_income ASC");
+        $stmt->execute([$ref_date]);
         $brackets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($brackets)) {
@@ -137,7 +147,7 @@ class TEPitEngine {
         return $tax;
     }
 
-    private function calculateFlatRateTax(int $year, array $row): float {
+    private function calculateFlatRateTax(string $ref_date, array $row): float {
         $provisionRateMap = [
             '23_1' => 'Rental Income',
             '23_2' => 'Rental Income',
@@ -152,7 +162,7 @@ class TEPitEngine {
         foreach ($provisionRateMap as $col_suffix => $income_type) {
             $col = 'amount_' . $col_suffix;
             if (isset($row[$col]) && (float)$row[$col] > 0) {
-                $rate = $this->lookupFlatRate($year, $income_type);
+                $rate = $this->lookupFlatRate($ref_date, $income_type);
                 $total_tax += (float)$row[$col] * ($rate / 100);
             }
         }
@@ -160,9 +170,9 @@ class TEPitEngine {
         return $total_tax;
     }
 
-    private function lookupFlatRate(int $year, string $income_type): float {
-        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_pit_flat_rates WHERE start_year <= ? AND end_year >= ? AND income_type = ? ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$year, $year, $income_type]);
+    private function lookupFlatRate(string $ref_date, string $income_type): float {
+        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_pit_flat_rates WHERE ? BETWEEN start_date AND end_date AND income_type = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$ref_date, $income_type]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? (float)$row['rate_percentage'] : 10.0;
     }
