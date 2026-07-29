@@ -45,7 +45,7 @@ All other tables (CIT, PIT, SEZ, Land, Resource, Royalty, Excise, etc.) either:
 | **Config UI** | Update benchmark rate config pages to show date fields |
 | **Backward compat** | Keep `start_year`/`end_year` — if `valid_from` is NULL, fall back to year |
 
-### Phase 2: Resource + Royalty (Optional)
+### Phase 2: PIT done ✅ — Resource + Royalty (Optional)
 
 Lower priority since yearly rates rarely change mid-year.
 
