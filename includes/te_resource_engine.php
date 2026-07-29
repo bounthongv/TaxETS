@@ -48,11 +48,11 @@ class TEResourceEngine {
         $fee_collected = (float)$row['fee_collected'];
         $year = (int)$row['tax_year'];
         $resource_type = trim($row['resource_type']);
+        $ref_date = date('Y-m-d', mktime(0, 0, 0, 1, 1, $year));
 
-        // Find benchmark rate
-        // We match by item_no or item_name
-        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_natural_resource WHERE active = 1 AND (item_no = ? OR item_name = ?) AND start_year <= ? AND (end_year IS NULL OR end_year >= ?) LIMIT 1");
-        $stmt->execute([$resource_type, $resource_type, $year, $year]);
+        // Find benchmark rate by date
+        $stmt = $this->pdo->prepare("SELECT rate_percentage FROM bm_natural_resource WHERE active = 1 AND (item_no = ? OR item_name = ?) AND ? BETWEEN start_date AND end_date LIMIT 1");
+        $stmt->execute([$resource_type, $resource_type, $ref_date]);
         $benchmark_rate = $stmt->fetchColumn();
 
         if ($benchmark_rate === false) {

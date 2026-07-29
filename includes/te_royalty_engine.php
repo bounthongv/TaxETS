@@ -48,15 +48,16 @@ class TERoyaltyEngine {
         $fee_collected = (float)$row['fee_collected'];
         $sale_value = (float)$row['electricity_sale_value'];
         $year = (int)$row['tax_year'];
+        $ref_date = date('Y-m-d', mktime(0, 0, 0, 1, 1, $year));
 
         $stmt = $this->pdo->prepare("
             SELECT rate_percentage
             FROM bm_royalty_fees
-            WHERE active = 1 AND start_year <= ? AND end_year >= ?
+            WHERE active = 1 AND ? BETWEEN start_date AND end_date
             ORDER BY start_year DESC
             LIMIT 1
         ");
-        $stmt->execute([$year, $year]);
+        $stmt->execute([$ref_date]);
         $benchmark_rate = $stmt->fetchColumn();
 
         if ($benchmark_rate === false) {
