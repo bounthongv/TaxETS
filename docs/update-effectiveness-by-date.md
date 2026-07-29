@@ -29,9 +29,9 @@ After scanning all 21 benchmark tables:
 | **`bm_salary_rates`** | `start_year`/`end_year` | ❌ **Only one needing conversion** |
 
 All other tables (CIT, PIT, SEZ, Land, Resource, Royalty, Excise, etc.) either:
-- Should stay year-based per regulation (CIT, PIT, SEZ, Land), OR
-- Benchmark comes from Excel import (Customs/Excise), OR  
-- Are Phase 2 lower priority (Resource, Royalty)
+- Should stay year-based per regulation (CIT, SEZ, Land), OR
+- Benchmark comes from Excel import (Customs/Excise), OR
+- Are now date-based (PIT ✅, Resource ✅, Royalty ✅)
 
 ## Plan (Revised)
 
